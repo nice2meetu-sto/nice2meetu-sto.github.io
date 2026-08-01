@@ -102,6 +102,13 @@ main{padding:10px 14px 12px}
 .pill.wait{background:rgba(120,120,128,.14);color:var(--ink-2)}
 .pill.mixed{background:rgba(120,120,128,.14);color:var(--ink-2)}
 .pill.big{position:static;display:inline-block;font-size:13px;padding:6px 12px}
+/* 위시 탭 카드 썸네일 위 배지 — 불투명하게 (사진 위에서도 잘 보이게) */
+.thumb .pill{-webkit-backdrop-filter:none;backdrop-filter:none;box-shadow:0 1px 4px rgba(0,0,0,.12)}
+.thumb .pill.ok{background:#D6F2DF;color:#1E9E4A}
+.thumb .pill.no{background:#FBDDDA;color:var(--red)}
+.thumb .pill.hold{background:#FCE8CE;color:#C97400}
+.thumb .pill.wait{background:#E8E8EA;color:var(--ink-2)}
+.thumb .pill.mixed{background:#E8E8EA;color:var(--ink-2)}
 
 /* ── 빈 화면 ── */
 .empty{text-align:center;padding:70px 20px;color:var(--ink-3)}
@@ -197,6 +204,11 @@ nav{
 }
 .btn-chip:active{transform:scale(.97)}
 .btn-danger{background:none;border:none;color:var(--red);font-size:13px;font-weight:500;margin:18px auto 0;display:block;cursor:pointer;font-family:inherit}
+/* 상세 하단 도구 (수정 · 삭제 한 줄) */
+.detail-tools{display:flex;justify-content:center;gap:24px;margin:18px 0 2px}
+.detail-tools button{background:none;border:none;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;padding:4px}
+.detail-tools .t-edit{color:var(--blue-deep)}
+.detail-tools .t-del{color:var(--red);font-weight:500}
 
 /* ── 상세 ── */
 .detail-img{width:100%;aspect-ratio:1/1;border-radius:18px;overflow:hidden;background:var(--gray-fill);position:relative;margin-bottom:15px;border:1px solid var(--hairline)}
@@ -256,15 +268,16 @@ nav{
   border-radius:20px;overflow:hidden;
   box-shadow:0 2px 12px rgba(0,0,0,.05);width:100%;
 }
-.pv-top{display:flex;gap:14px;padding:14px;align-items:flex-start;position:relative}
-.pv-img{width:96px;height:96px;flex:0 0 auto;border-radius:14px;overflow:hidden;background:var(--gray-fill);position:relative}
+.pv-top{display:flex;gap:14px;padding:14px;align-items:flex-start}
+.pv-media{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:8px}
+.pv-img{width:96px;height:96px;border-radius:14px;overflow:hidden;background:var(--gray-fill);position:relative}
 .pv-img img{width:100%;height:100%;object-fit:cover;display:block}
 .pv-img .fallback{display:none;width:100%;height:100%;align-items:center;justify-content:center;color:var(--ink-3)}
 .pv-img.noimg .fallback{display:flex}
 .pv-info{flex:1;min-width:0;padding-top:2px;display:flex;flex-direction:column}
-.pv-name{font-size:16px;font-weight:700;line-height:1.35;letter-spacing:-.02em;padding-right:60px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.pv-name{font-size:16px;font-weight:700;line-height:1.35;letter-spacing:-.02em}
 .pv-price{font-size:20px;font-weight:800;margin-top:4px;letter-spacing:-.02em}
-.pv-badge{position:absolute;top:14px;right:14px}
+.pv-badge{align-self:center}
 .pv-reason{margin-top:10px;background:var(--gray-fill);border-radius:12px;padding:9px 12px;font-size:13px;line-height:1.5}
 .pv-reason .rb-label{font-size:10.5px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:2px}
 .pv-actions{display:flex;gap:8px;padding:12px 14px 14px;border-top:1px solid var(--hairline)}
@@ -274,8 +287,11 @@ nav{
 }
 .ask-btn:active{transform:scale(.98);opacity:.85}
 
-/* 결재 결과 말풍선 (오른쪽, 파랑) */
+/* 결재 결과 말풍선 (오른쪽) — 결재 의견에 따라 색상 */
 .vote-bubble{background:var(--blue);color:#fff;border-bottom-right-radius:6px}
+.vote-bubble.ok{background:var(--green)}
+.vote-bubble.no{background:var(--red)}
+.vote-bubble.hold{background:var(--orange)}
 .vote-bubble b{font-size:14.5px;font-weight:700}
 .vote-bubble .vc{margin-top:5px;font-size:13.5px;line-height:1.5;color:rgba(255,255,255,.92);font-weight:400}
 .redo-btn{background:none;border:none;color:var(--ink-3);font-size:11.5px;font-family:inherit;cursor:pointer;margin-top:5px;padding:2px 4px}
@@ -329,8 +345,18 @@ nav{
 <div class="glow"></div>
 
 <header>
-  <div class="app-title">위시리스트</div>
+  <div class="app-title">위시리스트 💭</div>
   <div class="app-sub">사고 싶은 것들을 기록하고 결재받기</div>
+  <div class="totals" id="totals">
+    <div class="total-card wish glass">
+      <div class="total-label">위시 합계</div>
+      <div class="total-value" id="wishTotal">₩0</div>
+    </div>
+    <div class="total-card bought glass">
+      <div class="total-label">구매 합계</div>
+      <div class="total-value" id="boughtTotal">₩0</div>
+    </div>
+  </div>
 </header>
 
 <main>
@@ -365,7 +391,7 @@ nav{
 <!-- 아이템 추가 시트 -->
 <div class="sheet" id="addSheet">
   <div class="sheet-handle"></div>
-  <div class="sheet-title">새 아이템 추가</div>
+  <div class="sheet-title" id="addTitle">새 아이템 추가</div>
   <div class="field"><label>이름</label><input id="fName" placeholder="예: 무선 키보드" maxlength="60"></div>
   <div class="field">
     <label>사진 URL</label>
@@ -379,7 +405,7 @@ nav{
   </div>
   <div class="field"><label>가격 (원)</label><input id="fPrice" type="number" inputmode="numeric" placeholder="예: 89000"></div>
   <div class="field"><label>사고 싶은 이유</label><textarea id="fReason" placeholder="필요한 이유를 적어주세요"></textarea></div>
-  <label class="check-row"><input type="checkbox" id="fApproval"><span>바로 결재 올리기</span></label>
+  <label class="check-row" id="approvalRow"><input type="checkbox" id="fApproval"><span>바로 결재 올리기</span></label>
   <div style="height:16px"></div>
   <button class="btn btn-primary" id="saveItemBtn">추가하기</button>
 </div>
@@ -413,6 +439,7 @@ const APPROVERS = ['댈님', '쥠님'];  // 결재자 두 명 이름
 let items = [];
 let currentTab = '위시';
 let openItemId = null;
+let editItemId = null; // 아이템 수정 대상 (null이면 새로 추가)
 let voteItemId = null; // 결재 의견 팝업 대상 아이템
 let voteFor = null;    // 결재 의견 팝업 대상 결재자 (1 또는 2)
 let votePick = '';     // 팝업에서 선택한 결과
@@ -467,6 +494,13 @@ function approvalSummary(it) {
 
 /* ── 렌더 ── */
 function render() {
+  // 합계 카드는 결재 대기 탭에서만 숨김
+  const wishSum = items.filter(i => i.status === '위시' || i.status === '결재').reduce((s,i)=>s+i.price,0);
+  const boughtSum = items.filter(i => i.status === '삼').reduce((s,i)=>s+i.price,0);
+  $('#wishTotal').textContent = won(wishSum);
+  $('#boughtTotal').textContent = won(boughtSum);
+  $('#totals').style.display = currentTab === '결재' ? 'none' : 'flex';
+
   document.querySelectorAll('.tab').forEach(t => {
     const n = items.filter(i => i.status === t.dataset.tab).length;
     const b = t.querySelector('.badge');
@@ -530,10 +564,30 @@ $('#backdrop').addEventListener('click', closeSheets);
 
 /* ── 아이템 추가 ── */
 $('#fabBtn').addEventListener('click', () => {
+  editItemId = null;
   ['fName','fPhoto','fPrice','fReason'].forEach(id => $('#'+id).value = '');
   $('#fApproval').checked = false;
+  $('#addTitle').textContent = '새 아이템 추가';
+  $('#saveItemBtn').textContent = '추가하기';
+  $('#approvalRow').style.display = '';
   openSheet('#addSheet');
 });
+
+/* ── 아이템 수정 (추가와 같은 폼 재사용) ── */
+function openEdit(id) {
+  const it = items.find(i => String(i.id) === String(id));
+  if (!it) return;
+  editItemId = id;
+  $('#fName').value = it.name || '';
+  $('#fPhoto').value = it.photo || '';
+  $('#fPrice').value = (it.price ?? '') === '' ? '' : it.price;
+  $('#fReason').value = it.reason || '';
+  $('#addTitle').textContent = '아이템 수정';
+  $('#saveItemBtn').textContent = '수정하기';
+  $('#approvalRow').style.display = 'none';   // 수정 시 결재 체크박스는 숨김
+  closeSheets();
+  openSheet('#addSheet');
+}
 
 /* ── 이름으로 네이버 이미지 검색 (사진 URL 따오기용) ── */
 $('#searchPhotoBtn').addEventListener('click', () => {
@@ -548,6 +602,24 @@ $('#saveItemBtn').addEventListener('click', async () => {
   const price = Number($('#fPrice').value);
   if (!name) return toast('이름을 입력해 주세요');
   if (!price && price !== 0) return toast('가격을 입력해 주세요');
+  const photo = $('#fPhoto').value.trim();
+  const reason = $('#fReason').value.trim();
+
+  // 수정 모드
+  if (editItemId) {
+    const id = editItemId;
+    editItemId = null;
+    const it = items.find(i => String(i.id) === String(id));
+    if (!it) { closeSheets(); return; }
+    Object.assign(it, { name, price, photo, reason });
+    closeSheets();
+    refreshViews();
+    toast('저장 중…');
+    const r = await api({ action:'update', id, name, price, photo, reason });
+    toast(r.ok ? '수정했습니다' : '저장에 실패했습니다. 다시 시도해 주세요');
+    return;
+  }
+
   const status = $('#fApproval').checked ? '결재' : '위시';
   const item = {
     name, price,
@@ -605,16 +677,18 @@ function renderApprovalChat(it, opts = {}) {
     <div class="msg left card-msg">
       <div class="pv-card">
         <div class="pv-top">
-          <div class="pv-img ${it.photo ? '' : 'noimg'}">
-            ${it.photo ? `<img src="${esc(it.photo)}" alt="" onerror="this.parentElement.classList.add('noimg');this.remove()">` : ''}
-            <div class="fallback">${IMG_ICON}</div>
+          <div class="pv-media">
+            <div class="pv-img ${it.photo ? '' : 'noimg'}">
+              ${it.photo ? `<img src="${esc(it.photo)}" alt="" onerror="this.parentElement.classList.add('noimg');this.remove()">` : ''}
+              <div class="fallback">${IMG_ICON}</div>
+            </div>
+            <span class="pill big ${st.cls} pv-badge">${st.label}</span>
           </div>
           <div class="pv-info">
             <div class="pv-name">${esc(it.name)}</div>
             <div class="pv-price">${won(it.price)}</div>
             ${it.reason ? `<div class="pv-reason"><span class="rb-label">사고 싶은 이유</span>${esc(it.reason)}</div>` : ''}
           </div>
-          <span class="pill big ${st.cls} pv-badge">${st.label}</span>
         </div>
         ${askBtns}
       </div>
@@ -626,10 +700,11 @@ function renderApprovalChat(it, opts = {}) {
   [1,2].forEach(n => { if (it['a'+n] && !ordered.includes(n)) ordered.push(n); });
   const votes = ordered.map(n => {
     const result = it['a'+n], comment = it['a'+n+'c'];
+    const cls = result === '승인' ? 'ok' : result === '반려' ? 'no' : 'hold';
     return `
       <div class="msg right">
         <div class="msg-name">${esc(APPROVERS[n-1])}</div>
-        <div class="bubble vote-bubble">
+        <div class="bubble vote-bubble ${cls}">
           <b>${result}</b>${comment ? `<div class="vc">${esc(comment)}</div>` : ''}
         </div>
         <button class="redo-btn" onclick="resetVote('${it.id}',${n})">다시 결재</button>
@@ -652,8 +727,16 @@ function renderApprovalChat(it, opts = {}) {
       </div>`;
   }
 
-  const del = opts.withDelete ? `<button class="btn-danger" onclick="deleteItem('${it.id}')">아이템 삭제</button>` : '';
-  return `<div class="approval-convo"><div class="chat">${card}${votes}${decide}</div></div>${del}`;
+  return `<div class="approval-convo"><div class="chat">${card}${votes}${decide}</div>
+    ${detailTools(it.id)}</div>`;
+}
+
+/* 상세 하단 수정·삭제 도구 */
+function detailTools(id) {
+  return `<div class="detail-tools">
+    <button class="t-edit" onclick="openEdit('${id}')">아이템 수정</button>
+    <button class="t-del" onclick="deleteItem('${id}')">아이템 삭제</button>
+  </div>`;
 }
 
 /* ── 일반 상세 뷰 (위시/안삼/구매완료) ── */
@@ -706,7 +789,7 @@ function renderPlainDetail(it) {
     ${approvalHtml}
     <div class="section-label">처리</div>
     ${actions}
-    <button class="btn-danger" onclick="deleteItem()">아이템 삭제</button>`;
+    ${detailTools(it.id)}`;
 }
 
 /* 결재 탭 인라인/상세 시트 동시 갱신 */
