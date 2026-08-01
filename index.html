@@ -262,7 +262,7 @@ nav{
 .bubble{padding:11px 15px;border-radius:20px;font-size:14px;line-height:1.5;word-break:break-word}
 
 /* 아이템 미리보기 카드 (결재 요청 메시지) */
-.msg.card-msg{max-width:100%}
+.msg.card-msg{max-width:100%;width:100%}
 .pv-card{
   background:#fff;border:1px solid var(--hairline);
   border-radius:20px;overflow:hidden;
@@ -346,7 +346,7 @@ nav{
 
 <header>
   <div class="app-title">위시리스트 💭</div>
-  <div class="app-sub">사고 싶은 것들을 기록하고 결재받기</div>
+  <div class="app-sub">세상은 넓고 사고 싶은 건 많다</div>
   <div class="totals" id="totals">
     <div class="total-card wish glass">
       <div class="total-label">위시 합계</div>
@@ -654,7 +654,7 @@ function renderDetail() {
 
   // 결재 대기 아이템은 채팅(iMessage) 스타일로
   if (it.status === '결재') {
-    $('#detailBody').innerHTML = renderApprovalChat(it, { withDelete: true });
+    $('#detailBody').innerHTML = renderApprovalChat(it, { tools: true });
     return;
   }
 
@@ -678,11 +678,11 @@ function renderApprovalChat(it, opts = {}) {
       <div class="pv-card">
         <div class="pv-top">
           <div class="pv-media">
+            <span class="pill big ${st.cls} pv-badge">${st.label}</span>
             <div class="pv-img ${it.photo ? '' : 'noimg'}">
               ${it.photo ? `<img src="${esc(it.photo)}" alt="" onerror="this.parentElement.classList.add('noimg');this.remove()">` : ''}
               <div class="fallback">${IMG_ICON}</div>
             </div>
-            <span class="pill big ${st.cls} pv-badge">${st.label}</span>
           </div>
           <div class="pv-info">
             <div class="pv-name">${esc(it.name)}</div>
@@ -727,8 +727,9 @@ function renderApprovalChat(it, opts = {}) {
       </div>`;
   }
 
-  return `<div class="approval-convo"><div class="chat">${card}${votes}${decide}</div>
-    ${detailTools(it.id)}</div>`;
+  // 수정·삭제 도구는 상세 시트에서만 (결재 대기 탭 인라인에서는 숨김)
+  const tools = opts.tools ? detailTools(it.id) : '';
+  return `<div class="approval-convo"><div class="chat">${card}${votes}${decide}</div>${tools}</div>`;
 }
 
 /* 상세 하단 수정·삭제 도구 */
