@@ -1,4 +1,613 @@
 <!DOCTYPE html>
-<meta charset="utf-8">
-<title>보드게임 Hub</title>
-<script>location.replace('/hub-app/' + location.search + location.hash);</script>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>위시리스트</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+:root{
+  --bg:#F5F5F7;
+  --ink:#1D1D1F;
+  --ink-2:#6E6E73;
+  --ink-3:#AEAEB2;
+  --blue:#0A84FF;
+  --blue-deep:#0071E3;
+  --green:#34C759;
+  --red:#FF3B30;
+  --orange:#FF9500;
+  --gray-fill:#F2F2F7;
+  --hairline:rgba(0,0,0,.06);
+  --glass:rgba(255,255,255,.66);
+  --glass-border:rgba(255,255,255,.75);
+  --radius:18px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif;
+  color:var(--ink);background:var(--bg);
+  max-width:480px;margin:0 auto;padding-bottom:110px;
+  letter-spacing:-.01em;
+}
+/* 배경의 부드러운 블루 광원 — 글래스가 얹힐 바탕 */
+.glow{position:fixed;inset:0;z-index:-1;overflow:hidden;max-width:480px;left:50%;transform:translateX(-50%)}
+.glow::before,.glow::after{
+  content:'';position:absolute;border-radius:50%;filter:blur(70px);opacity:.5;
+}
+.glow::before{width:340px;height:340px;background:#BFDBFF;top:-120px;right:-100px}
+.glow::after{width:300px;height:300px;background:#DCEBFF;bottom:10%;left:-140px}
+
+.glass{
+  background:var(--glass);
+  -webkit-backdrop-filter:blur(24px) saturate(180%);
+  backdrop-filter:blur(24px) saturate(180%);
+  border:1px solid var(--glass-border);
+  box-shadow:0 8px 28px rgba(0,0,0,.07);
+}
+
+/* ── 헤더 ── */
+header{padding:26px 18px 8px}
+.app-title{font-size:30px;font-weight:800;letter-spacing:-.03em}
+.app-sub{font-size:13px;color:var(--ink-2);margin-top:3px}
+.totals{display:flex;gap:10px;margin:16px 0 4px}
+.total-card{flex:1;border-radius:var(--radius);padding:14px 16px}
+.total-label{font-size:12.5px;color:var(--ink-2);font-weight:500}
+.total-value{font-size:21px;font-weight:700;margin-top:3px;letter-spacing:-.02em}
+.total-card.wish .total-value{color:var(--blue)}
+.total-card.bought .total-value{color:var(--ink)}
+
+/* ── 카드 그리드 ── */
+main{padding:10px 14px 12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.card{
+  background:#fff;border-radius:var(--radius);overflow:hidden;cursor:pointer;position:relative;
+  border:1px solid var(--hairline);box-shadow:0 2px 10px rgba(0,0,0,.04);
+  transition:transform .12s;
+}
+.card:active{transform:scale(.97)}
+.thumb{width:100%;aspect-ratio:1/1;position:relative;background:var(--gray-fill)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .fallback{display:none;width:100%;height:100%;align-items:center;justify-content:center;color:var(--ink-3)}
+.thumb.noimg .fallback{display:flex}
+.card-body{padding:11px 13px 13px}
+.card-name{
+  font-size:13.5px;font-weight:500;line-height:1.4;color:var(--ink);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.card-price{font-size:16px;font-weight:700;margin-top:4px;letter-spacing:-.02em}
+
+/* ── 상태 필 ── */
+.pill{
+  position:absolute;top:9px;left:9px;
+  font-size:11.5px;font-weight:600;padding:5px 10px;border-radius:99px;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+}
+.pill.ok{background:rgba(52,199,89,.16);color:#1E9E4A}
+.pill.no{background:rgba(255,59,48,.13);color:var(--red)}
+.pill.hold{background:rgba(255,149,0,.15);color:#C97400}
+.pill.wait{background:rgba(120,120,128,.14);color:var(--ink-2)}
+.pill.mixed{background:rgba(120,120,128,.14);color:var(--ink-2)}
+.pill.big{position:static;display:inline-block;font-size:13px;padding:6px 12px}
+
+/* ── 빈 화면 ── */
+.empty{text-align:center;padding:70px 20px;color:var(--ink-3)}
+.empty svg{margin-bottom:12px}
+.empty p{font-size:14px;line-height:1.6;color:var(--ink-2)}
+
+/* ── 하단 탭 (플로팅 글래스) ── */
+nav{
+  position:fixed;bottom:calc(12px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);
+  width:calc(100% - 24px);max-width:456px;border-radius:28px;
+  display:flex;padding:7px;z-index:20;
+}
+.tab{
+  flex:1;border:none;background:none;cursor:pointer;color:var(--ink-2);
+  font-family:inherit;font-size:11px;font-weight:600;padding:8px 0 7px;border-radius:22px;position:relative;
+  transition:background .15s,color .15s;
+}
+.tab svg{display:block;margin:0 auto 3px}
+.tab.active{color:var(--blue);background:rgba(10,132,255,.12)}
+.tab .badge{
+  position:absolute;top:4px;right:calc(50% - 26px);
+  background:var(--blue);color:#fff;font-size:10px;font-weight:700;
+  min-width:17px;height:17px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;
+}
+
+/* ── FAB ── */
+.fab{
+  position:fixed;right:calc(50% - 240px + 18px);bottom:calc(92px + env(safe-area-inset-bottom));
+  width:54px;height:54px;border-radius:50%;border:none;cursor:pointer;
+  background:var(--blue);color:#fff;z-index:21;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 8px 20px rgba(10,132,255,.35);transition:transform .12s;
+}
+.fab:active{transform:scale(.92)}
+@media (max-width:500px){.fab{right:18px}}
+
+/* ── 바텀시트 ── */
+.backdrop{
+  position:fixed;inset:0;background:rgba(0,0,0,.28);z-index:30;
+  opacity:0;pointer-events:none;transition:opacity .2s;
+}
+.backdrop.show{opacity:1;pointer-events:auto}
+.sheet{
+  position:fixed;left:50%;transform:translate(-50%,105%);bottom:0;
+  width:100%;max-width:480px;z-index:31;
+  background:rgba(250,250,252,.85);
+  -webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);
+  border:1px solid var(--glass-border);border-bottom:none;
+  border-radius:26px 26px 0 0;max-height:88vh;overflow-y:auto;
+  padding:10px 20px calc(26px + env(safe-area-inset-bottom));
+  transition:transform .28s cubic-bezier(.2,.8,.3,1);
+}
+.sheet.show{transform:translate(-50%,0)}
+.sheet-handle{width:38px;height:5px;border-radius:3px;background:rgba(0,0,0,.14);margin:8px auto 16px}
+.sheet-title{font-size:21px;font-weight:700;margin-bottom:16px;letter-spacing:-.02em}
+
+/* ── 폼 ── */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:6px}
+.field input,.field textarea{
+  width:100%;border:1px solid var(--hairline);border-radius:13px;
+  padding:12px 14px;font-size:15px;font-family:inherit;color:var(--ink);
+  background:#fff;outline:none;transition:box-shadow .15s,border-color .15s;
+}
+.field input:focus,.field textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(10,132,255,.15)}
+.field textarea{resize:none;height:78px}
+.check-row{
+  display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--hairline);
+  border-radius:13px;padding:13px 14px;cursor:pointer;user-select:none;
+}
+.check-row input{width:19px;height:19px;accent-color:var(--blue)}
+.check-row span{font-size:14.5px;font-weight:500}
+
+.btn{
+  border:none;border-radius:14px;padding:15px;font-size:16px;font-weight:600;cursor:pointer;
+  font-family:inherit;width:100%;transition:transform .1s,opacity .1s;letter-spacing:-.01em;
+}
+.btn:active{transform:scale(.98);opacity:.85}
+.btn-primary{background:var(--blue-deep);color:#fff}
+.btn-row{display:flex;gap:8px;margin-top:8px}
+.btn-chip{
+  flex:1;border:none;background:var(--gray-fill);color:var(--ink);
+  border-radius:13px;padding:12px 4px;font-size:13.5px;font-weight:600;font-family:inherit;cursor:pointer;
+}
+.btn-chip:active{transform:scale(.97)}
+.btn-danger{background:none;border:none;color:var(--red);font-size:13px;font-weight:500;margin:18px auto 0;display:block;cursor:pointer;font-family:inherit}
+
+/* ── 상세 ── */
+.detail-img{width:100%;aspect-ratio:1/1;border-radius:18px;overflow:hidden;background:var(--gray-fill);position:relative;margin-bottom:15px;border:1px solid var(--hairline)}
+.detail-img img{width:100%;height:100%;object-fit:cover}
+.detail-img .fallback{display:none;width:100%;height:100%;align-items:center;justify-content:center;color:var(--ink-3)}
+.detail-img.noimg .fallback{display:flex}
+.detail-name{font-size:19px;font-weight:700;line-height:1.4;letter-spacing:-.02em}
+.detail-price{font-size:26px;font-weight:800;margin:6px 0 8px;letter-spacing:-.03em}
+.detail-meta{font-size:12.5px;color:var(--ink-2);margin-bottom:13px}
+.reason-box{
+  background:#fff;border:1px solid var(--hairline);border-radius:14px;padding:13px 15px;
+  font-size:14px;line-height:1.6;margin-bottom:6px;
+}
+.reason-box .rb-label{font-size:11.5px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:4px}
+.section-label{font-size:15px;font-weight:700;margin:20px 0 10px;display:flex;align-items:center;gap:8px;letter-spacing:-.01em}
+
+/* ── 결재 패널 ── */
+.approver{
+  background:#fff;border:1px solid var(--hairline);border-radius:15px;padding:14px;margin-bottom:10px;
+}
+.approver-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.approver-name{font-weight:600;font-size:14.5px}
+.vote-row{display:flex;gap:7px}
+.vote{
+  flex:1;border-radius:11px;padding:10px 0;font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;
+  border:1px solid transparent;background:var(--gray-fill);color:var(--ink-2);transition:.12s;
+}
+.vote[data-v="승인"].sel{background:rgba(52,199,89,.14);border-color:var(--green);color:#1E9E4A}
+.vote[data-v="반려"].sel{background:rgba(255,59,48,.10);border-color:var(--red);color:var(--red)}
+.vote[data-v="보류"].sel{background:rgba(255,149,0,.13);border-color:var(--orange);color:#C97400}
+.approver textarea{
+  width:100%;margin-top:9px;border:1px solid var(--hairline);border-radius:11px;
+  padding:10px 12px;font-size:13.5px;font-family:inherit;height:56px;resize:none;background:var(--bg);outline:none;
+}
+.approver textarea:focus{border-color:var(--blue)}
+.approver .save-vote{
+  margin-top:9px;width:100%;border:none;border-radius:11px;padding:11px;
+  background:var(--ink);color:#fff;font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;
+}
+.approver .save-vote.secondary{background:var(--gray-fill);color:var(--ink-2)}
+.comment-view{margin-top:9px;font-size:13.5px;background:var(--bg);border-radius:11px;padding:10px 12px;line-height:1.55}
+.comment-view b{font-size:11.5px;color:var(--ink-2);display:block;margin-bottom:2px;font-weight:600}
+
+/* ── 토스트 ── */
+#toast{
+  position:fixed;left:50%;transform:translateX(-50%) translateY(16px);bottom:104px;
+  background:rgba(29,29,31,.92);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  color:#fff;font-size:13.5px;font-weight:500;padding:12px 20px;border-radius:99px;
+  opacity:0;pointer-events:none;transition:.25s;z-index:50;white-space:nowrap;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.loader{text-align:center;padding:48px;color:var(--ink-2);font-size:14px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="glow"></div>
+
+<header>
+  <div class="app-title">위시리스트</div>
+  <div class="app-sub">사고 싶은 것들을 기록하고 결재받기</div>
+  <div class="totals">
+    <div class="total-card wish glass">
+      <div class="total-label">위시 합계</div>
+      <div class="total-value" id="wishTotal">₩0</div>
+    </div>
+    <div class="total-card bought glass">
+      <div class="total-label">구매 합계</div>
+      <div class="total-value" id="boughtTotal">₩0</div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div id="listArea"><div class="loader">불러오는 중…</div></div>
+</main>
+
+<button class="fab" id="fabBtn" aria-label="아이템 추가">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+</button>
+
+<nav class="glass" id="tabbar">
+  <button class="tab" data-tab="결재">
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M3 13h4l2 3h6l2-3h4M5 6h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    결재 대기<span class="badge" hidden></span>
+  </button>
+  <button class="tab active" data-tab="위시">
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="m12 3 2.7 5.6 6.3.9-4.5 4.3 1 6.2L12 17l-5.5 3 1-6.2L3 9.5l6.3-.9L12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+    위시<span class="badge" hidden></span>
+  </button>
+  <button class="tab" data-tab="안삼">
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M9 9l6 6M15 9l-6 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+    안삼<span class="badge" hidden></span>
+  </button>
+  <button class="tab" data-tab="삼">
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M6 8h12l1 12H5L6 8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 10V6a3 3 0 0 1 6 0v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+    구매완료<span class="badge" hidden></span>
+  </button>
+</nav>
+
+<div class="backdrop" id="backdrop"></div>
+
+<!-- 아이템 추가 시트 -->
+<div class="sheet" id="addSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">새 아이템 추가</div>
+  <div class="field"><label>이름</label><input id="fName" placeholder="예: 무선 키보드" maxlength="60"></div>
+  <div class="field"><label>사진 URL</label><input id="fPhoto" placeholder="https:// 이미지 주소"></div>
+  <div class="field"><label>가격 (원)</label><input id="fPrice" type="number" inputmode="numeric" placeholder="예: 89000"></div>
+  <div class="field"><label>사고 싶은 이유</label><textarea id="fReason" placeholder="필요한 이유를 적어주세요"></textarea></div>
+  <label class="check-row"><input type="checkbox" id="fApproval"><span>바로 결재 올리기</span></label>
+  <div style="height:16px"></div>
+  <button class="btn btn-primary" id="saveItemBtn">추가하기</button>
+</div>
+
+<!-- 상세 시트 -->
+<div class="sheet" id="detailSheet">
+  <div class="sheet-handle"></div>
+  <div id="detailBody"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ══════════════ 설정 (여기만 수정하면 됩니다) ══════════════ */
+const API_URL = '';   // Apps Script 웹 앱 URL. 비워두면 데모 모드로 동작
+const APPROVERS = ['결재자 1', '결재자 2'];  // 결재자 두 명 이름
+/* ═══════════════════════════════════════════════════════ */
+
+let items = [];
+let currentTab = '위시';
+let openItemId = null;
+let pendingVotes = {};
+
+const $ = s => document.querySelector(s);
+const won = n => '₩' + (Number(n) || 0).toLocaleString('ko-KR');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const IMG_ICON = '<svg width="34" height="34" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2.5" stroke="currentColor" stroke-width="1.6"/><circle cx="9" cy="10" r="1.6" fill="currentColor"/><path d="m5 17 4.2-4 3.3 3 2.8-2.5L19 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+/* ── 데모 데이터 (API_URL 없을 때) ── */
+const DEMO = [
+  {id:'1', name:'무선 미니 가습기', photo:'', price:32000, reason:'사무실 책상이 너무 건조함', status:'결재', createdAt:'2026-07-29', a1:'승인', a1c:'겨울 오기 전에 사자', a2:'', a2c:''},
+  {id:'2', name:'접이식 블루투스 키보드', photo:'', price:89000, reason:'카페에서 작업용', status:'위시', createdAt:'2026-07-28', a1:'', a1c:'', a2:'', a2c:''},
+  {id:'3', name:'스탠딩 데스크 컨버터', photo:'', price:159000, reason:'허리가 아파서', status:'안삼', createdAt:'2026-07-15', a1:'반려', a1c:'집에 책상 두 개 있음', a2:'반려', a2c:'동의'},
+  {id:'4', name:'모니터 조명 바', photo:'', price:24500, reason:'야간 작업 시 눈 피로 감소', status:'삼', createdAt:'2026-07-01', a1:'승인', a1c:'실용적', a2:'승인', a2c:'통과'}
+];
+
+/* ── API ── */
+async function loadItems() {
+  if (!API_URL) { items = structuredClone(DEMO); render(); return; }
+  try {
+    const res = await fetch(API_URL);
+    const data = await res.json();
+    if (data.ok) { items = data.items; render(); }
+    else throw new Error(data.error);
+  } catch (e) {
+    $('#listArea').innerHTML = '<div class="empty"><p>데이터를 불러오지 못했습니다.<br>API_URL 설정을 확인해 주세요.</p></div>';
+  }
+}
+
+async function api(body) {
+  if (!API_URL) { toast('데모 모드입니다 (저장되지 않음)'); return { ok:true, id:String(Date.now()) }; }
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+/* ── 결재 결과 판정 ── */
+function approvalSummary(it) {
+  const votes = [it.a1, it.a2];
+  if (votes.includes('보류')) return { label:'보류 중', cls:'hold' };
+  if (it.a1 === '승인' && it.a2 === '승인') return { label:'구매 가능', cls:'ok' };
+  if (it.a1 === '반려' && it.a2 === '반려') return { label:'구매 불가', cls:'no' };
+  if (it.a1 && it.a2) return { label:'의견 갈림', cls:'mixed' };
+  const n = votes.filter(Boolean).length;
+  return { label:'결재 중 ' + n + '/2', cls:'wait' };
+}
+
+/* ── 렌더 ── */
+function render() {
+  const wishSum = items.filter(i => i.status === '위시' || i.status === '결재').reduce((s,i)=>s+i.price,0);
+  const boughtSum = items.filter(i => i.status === '삼').reduce((s,i)=>s+i.price,0);
+  $('#wishTotal').textContent = won(wishSum);
+  $('#boughtTotal').textContent = won(boughtSum);
+
+  document.querySelectorAll('.tab').forEach(t => {
+    const n = items.filter(i => i.status === t.dataset.tab).length;
+    const b = t.querySelector('.badge');
+    b.hidden = n === 0;
+    b.textContent = n;
+  });
+
+  const list = items.filter(i => i.status === currentTab)
+                    .sort((a,b) => String(b.id).localeCompare(String(a.id)));
+  const area = $('#listArea');
+  if (!list.length) {
+    const msg = { '결재':'결재 대기 중인 아이템이 없습니다.', '위시':'아직 위시가 없습니다.<br>+ 버튼으로 추가해 보세요.',
+                  '안삼':'구매하지 않기로 한 아이템이 없습니다.', '삼':'아직 구매한 아이템이 없습니다.' }[currentTab];
+    area.innerHTML = `<div class="empty">${IMG_ICON}<p>${msg}</p></div>`;
+    return;
+  }
+  area.innerHTML = '<div class="grid">' + list.map(it => {
+    const st = currentTab === '결재' ? approvalSummary(it) : null;
+    return `
+    <div class="card" onclick="openDetail('${it.id}')">
+      <div class="thumb ${it.photo ? '' : 'noimg'}">
+        ${it.photo ? `<img src="${esc(it.photo)}" alt="" loading="lazy" onerror="this.parentElement.classList.add('noimg');this.remove()">` : ''}
+        <div class="fallback">${IMG_ICON}</div>
+        ${st ? `<div class="pill ${st.cls}">${st.label}</div>` : ''}
+      </div>
+      <div class="card-body">
+        <div class="card-name">${esc(it.name)}</div>
+        <div class="card-price">${won(it.price)}</div>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+/* ── 탭 ── */
+$('#tabbar').addEventListener('click', e => {
+  const btn = e.target.closest('.tab');
+  if (!btn) return;
+  currentTab = btn.dataset.tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === btn));
+  render();
+  window.scrollTo({ top: 0 });
+});
+
+/* ── 시트 열기/닫기 ── */
+function openSheet(id) { $('#backdrop').classList.add('show'); $(id).classList.add('show'); }
+function closeSheets() {
+  $('#backdrop').classList.remove('show');
+  document.querySelectorAll('.sheet').forEach(s => s.classList.remove('show'));
+  openItemId = null; pendingVotes = {};
+}
+$('#backdrop').addEventListener('click', closeSheets);
+
+/* ── 아이템 추가 ── */
+$('#fabBtn').addEventListener('click', () => {
+  ['fName','fPhoto','fPrice','fReason'].forEach(id => $('#'+id).value = '');
+  $('#fApproval').checked = false;
+  openSheet('#addSheet');
+});
+
+$('#saveItemBtn').addEventListener('click', async () => {
+  const name = $('#fName').value.trim();
+  const price = Number($('#fPrice').value);
+  if (!name) return toast('이름을 입력해 주세요');
+  if (!price && price !== 0) return toast('가격을 입력해 주세요');
+  const status = $('#fApproval').checked ? '결재' : '위시';
+  const item = {
+    name, price,
+    photo: $('#fPhoto').value.trim(),
+    reason: $('#fReason').value.trim(),
+    status, createdAt: new Date().toISOString().slice(0,10),
+    a1:'', a1c:'', a2:'', a2c:''
+  };
+  closeSheets();
+  toast('저장 중…');
+  const r = await api({ action:'add', ...item });
+  if (r.ok) {
+    item.id = r.id;
+    items.push(item);
+    currentTab = status;
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === status));
+    render();
+    toast(status === '결재' ? '결재를 올렸습니다' : '위시에 추가했습니다');
+  } else toast('저장에 실패했습니다. 다시 시도해 주세요');
+});
+
+/* ── 상세 ── */
+function openDetail(id) {
+  openItemId = id;
+  pendingVotes = {};
+  renderDetail();
+  openSheet('#detailSheet');
+}
+
+function renderDetail() {
+  const it = items.find(i => String(i.id) === String(openItemId));
+  if (!it) return closeSheets();
+  const st = approvalSummary(it);
+  const hasVotes = it.a1 || it.a2;
+
+  let actions = '';
+  if (it.status === '위시') actions = `
+    <button class="btn btn-primary" onclick="requestApproval()">결재 올리기</button>
+    <div class="btn-row">
+      <button class="btn-chip" onclick="setStatus('삼')">구매함</button>
+      <button class="btn-chip" onclick="setStatus('안삼')">안 사기로 함</button>
+    </div>`;
+  else if (it.status === '결재') actions = `
+    <div class="btn-row">
+      <button class="btn-chip" onclick="setStatus('삼')">구매함</button>
+      <button class="btn-chip" onclick="setStatus('안삼')">안 사기로 함</button>
+      <button class="btn-chip" onclick="setStatus('위시')">위시로</button>
+    </div>`;
+  else if (it.status === '안삼') actions = `
+    <div class="btn-row">
+      <button class="btn-chip" onclick="setStatus('위시')">다시 위시로</button>
+      <button class="btn-chip" onclick="setStatus('삼')">구매함</button>
+    </div>`;
+  else actions = `
+    <div class="btn-row">
+      <button class="btn-chip" onclick="setStatus('위시')">위시로 되돌리기</button>
+    </div>`;
+
+  let approvalHtml = '';
+  if (it.status === '결재') {
+    approvalHtml = `<div class="section-label">결재 <span class="pill big ${st.cls}">${st.label}</span></div>` +
+      [1,2].map(n => {
+        const result = it['a'+n], comment = it['a'+n+'c'];
+        if (result) return `
+          <div class="approver">
+            <div class="approver-head">
+              <span class="approver-name">${esc(APPROVERS[n-1])}</span>
+              <span class="pill big ${result==='승인'?'ok':result==='반려'?'no':'hold'}">${result}</span>
+            </div>
+            ${comment ? `<div class="comment-view"><b>결재 의견</b>${esc(comment)}</div>` : ''}
+            <button class="save-vote secondary" onclick="resetVote(${n})">다시 결재하기</button>
+          </div>`;
+        const pv = pendingVotes[n] || {};
+        return `
+          <div class="approver">
+            <div class="approver-head"><span class="approver-name">${esc(APPROVERS[n-1])}</span></div>
+            <div class="vote-row">
+              ${['승인','반려','보류'].map(v =>
+                `<button class="vote ${pv.result===v?'sel':''}" data-v="${v}" onclick="pickVote(${n},'${v}')">${v}</button>`).join('')}
+            </div>
+            <textarea id="voteComment${n}" placeholder="결재 의견 (선택)">${esc(pv.comment||'')}</textarea>
+            <button class="save-vote" onclick="saveVote(${n})">의견 저장</button>
+          </div>`;
+      }).join('');
+  } else if (hasVotes) {
+    approvalHtml = `<div class="section-label">결재 기록 <span class="pill big ${st.cls}">${st.label}</span></div>` +
+      [1,2].map(n => {
+        const result = it['a'+n], comment = it['a'+n+'c'];
+        if (!result) return '';
+        return `
+          <div class="approver">
+            <div class="approver-head">
+              <span class="approver-name">${esc(APPROVERS[n-1])}</span>
+              <span class="pill big ${result==='승인'?'ok':result==='반려'?'no':'hold'}">${result}</span>
+            </div>
+            ${comment ? `<div class="comment-view"><b>결재 의견</b>${esc(comment)}</div>` : ''}
+          </div>`;
+      }).join('');
+  }
+
+  $('#detailBody').innerHTML = `
+    <div class="detail-img ${it.photo ? '' : 'noimg'}">
+      ${it.photo ? `<img src="${esc(it.photo)}" alt="" onerror="this.parentElement.classList.add('noimg');this.remove()">` : ''}
+      <div class="fallback">${IMG_ICON}</div>
+    </div>
+    <div class="detail-name">${esc(it.name)}</div>
+    <div class="detail-price">${won(it.price)}</div>
+    <div class="detail-meta">${esc(it.createdAt)} 등록 · 상태: ${esc(it.status === '결재' ? '결재 대기' : it.status === '삼' ? '구매완료' : it.status)}</div>
+    ${it.reason ? `<div class="reason-box"><span class="rb-label">사고 싶은 이유</span>${esc(it.reason)}</div>` : ''}
+    ${approvalHtml}
+    <div class="section-label">처리</div>
+    ${actions}
+    <button class="btn-danger" onclick="deleteItem()">아이템 삭제</button>`;
+}
+
+/* ── 상태 변경 ── */
+async function setStatus(status) {
+  const it = items.find(i => String(i.id) === String(openItemId));
+  if (!it) return;
+  const prev = it.status;
+  it.status = status;
+  if (status === '결재') { it.a1 = it.a1c = it.a2 = it.a2c = ''; }
+  render(); renderDetail();
+  toast({'삼':'구매완료로 이동했습니다','안삼':'안삼으로 이동했습니다','위시':'위시로 이동했습니다','결재':'결재를 올렸습니다'}[status]);
+  const r = await api({ action:'status', id: it.id, status });
+  if (!r.ok) { it.status = prev; render(); toast('저장에 실패했습니다. 다시 시도해 주세요'); }
+}
+function requestApproval() { setStatus('결재'); }
+
+/* ── 결재 ── */
+function pickVote(n, v) {
+  pendingVotes[n] = { ...(pendingVotes[n]||{}), result: v, comment: $('#voteComment'+n)?.value || '' };
+  const other = n === 1 ? 2 : 1;
+  const otherTa = $('#voteComment'+other);
+  if (otherTa) pendingVotes[other] = { ...(pendingVotes[other]||{}), comment: otherTa.value };
+  renderDetail();
+}
+async function saveVote(n) {
+  const pv = pendingVotes[n];
+  const comment = $('#voteComment'+n)?.value.trim() || '';
+  if (!pv || !pv.result) return toast('승인·반려·보류 중 하나를 선택해 주세요');
+  const it = items.find(i => String(i.id) === String(openItemId));
+  it['a'+n] = pv.result;
+  it['a'+n+'c'] = comment;
+  delete pendingVotes[n];
+  render(); renderDetail();
+  toast('결재 의견을 저장했습니다');
+  const r = await api({ action:'approve', id: it.id, approver: n, result: pv.result, comment });
+  if (!r.ok) toast('저장에 실패했습니다. 다시 시도해 주세요');
+}
+async function resetVote(n) {
+  const it = items.find(i => String(i.id) === String(openItemId));
+  it['a'+n] = ''; it['a'+n+'c'] = '';
+  render(); renderDetail();
+  const r = await api({ action:'approve', id: it.id, approver: n, result:'', comment:'' });
+  if (!r.ok) toast('저장에 실패했습니다. 다시 시도해 주세요');
+}
+
+/* ── 삭제 ── */
+async function deleteItem() {
+  if (!confirm('이 아이템을 삭제할까요? 되돌릴 수 없습니다.')) return;
+  const idx = items.findIndex(i => String(i.id) === String(openItemId));
+  const [removed] = items.splice(idx, 1);
+  closeSheets(); render();
+  toast('삭제했습니다');
+  const r = await api({ action:'delete', id: removed.id });
+  if (!r.ok) { items.splice(idx, 0, removed); render(); toast('삭제에 실패했습니다. 다시 시도해 주세요'); }
+}
+
+/* ── 토스트 ── */
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+loadItems();
+</script>
+</body>
+</html>
