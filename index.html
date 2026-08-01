@@ -268,17 +268,16 @@ nav{
   border-radius:20px;overflow:hidden;
   box-shadow:0 2px 12px rgba(0,0,0,.05);width:100%;
 }
-.pv-top{display:flex;gap:14px;padding:14px;align-items:flex-start}
-.pv-media{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:8px}
-.pv-img{width:96px;height:96px;border-radius:14px;overflow:hidden;background:var(--gray-fill);position:relative}
+.pv-top{display:flex;gap:14px;padding:14px 14px 10px;align-items:flex-start}
+.pv-img{width:96px;height:96px;flex:0 0 auto;border-radius:14px;overflow:hidden;background:var(--gray-fill);position:relative}
 .pv-img img{width:100%;height:100%;object-fit:cover;display:block}
 .pv-img .fallback{display:none;width:100%;height:100%;align-items:center;justify-content:center;color:var(--ink-3)}
 .pv-img.noimg .fallback{display:flex}
 .pv-info{flex:1;min-width:0;padding-top:2px;display:flex;flex-direction:column}
+.pv-badge{align-self:flex-start;margin-bottom:8px}
 .pv-name{font-size:16px;font-weight:700;line-height:1.35;letter-spacing:-.02em}
-.pv-price{font-size:20px;font-weight:800;margin-top:4px;letter-spacing:-.02em}
-.pv-badge{align-self:center}
-.pv-reason{margin-top:10px;background:var(--gray-fill);border-radius:12px;padding:9px 12px;font-size:13px;line-height:1.5}
+.pv-price{font-size:20px;font-weight:800;margin-top:3px;letter-spacing:-.02em}
+.pv-reason{margin:0 14px 14px;background:var(--gray-fill);border-radius:12px;padding:10px 13px;font-size:13px;line-height:1.5}
 .pv-reason .rb-label{font-size:10.5px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:2px}
 .pv-actions{display:flex;gap:8px;padding:12px 14px 14px;border-top:1px solid var(--hairline)}
 .ask-btn{
@@ -677,19 +676,17 @@ function renderApprovalChat(it, opts = {}) {
     <div class="msg left card-msg">
       <div class="pv-card">
         <div class="pv-top">
-          <div class="pv-media">
-            <span class="pill big ${st.cls} pv-badge">${st.label}</span>
-            <div class="pv-img ${it.photo ? '' : 'noimg'}">
-              ${it.photo ? `<img src="${esc(it.photo)}" alt="" onerror="this.parentElement.classList.add('noimg');this.remove()">` : ''}
-              <div class="fallback">${IMG_ICON}</div>
-            </div>
+          <div class="pv-img ${it.photo ? '' : 'noimg'}">
+            ${it.photo ? `<img src="${esc(it.photo)}" alt="" onerror="this.parentElement.classList.add('noimg');this.remove()">` : ''}
+            <div class="fallback">${IMG_ICON}</div>
           </div>
           <div class="pv-info">
+            <span class="pill big ${st.cls} pv-badge">${st.label}</span>
             <div class="pv-name">${esc(it.name)}</div>
             <div class="pv-price">${won(it.price)}</div>
-            ${it.reason ? `<div class="pv-reason"><span class="rb-label">사고 싶은 이유</span>${esc(it.reason)}</div>` : ''}
           </div>
         </div>
+        ${it.reason ? `<div class="pv-reason"><span class="rb-label">사고 싶은 이유</span>${esc(it.reason)}</div>` : ''}
         ${askBtns}
       </div>
     </div>`;
