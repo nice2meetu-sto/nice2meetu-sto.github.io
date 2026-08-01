@@ -168,6 +168,15 @@ nav{
 }
 .field input:focus,.field textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(10,132,255,.15)}
 .field textarea{resize:none;height:78px}
+/* 입력창 + 오른쪽 버튼 한 줄 배치 */
+.input-row{display:flex;gap:8px}
+.input-row input{flex:1;min-width:0}
+.input-btn{
+  flex:0 0 auto;border:none;border-radius:13px;padding:0 16px;
+  background:var(--blue-deep);color:#fff;font-family:inherit;font-size:14px;font-weight:600;
+  cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;transition:transform .1s,opacity .1s;
+}
+.input-btn:active{transform:scale(.96);opacity:.85}
 .check-row{
   display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--hairline);
   border-radius:13px;padding:13px 14px;cursor:pointer;user-select:none;
@@ -296,7 +305,16 @@ nav{
   <div class="sheet-handle"></div>
   <div class="sheet-title">새 아이템 추가</div>
   <div class="field"><label>이름</label><input id="fName" placeholder="예: 무선 키보드" maxlength="60"></div>
-  <div class="field"><label>사진 URL</label><input id="fPhoto" placeholder="https:// 이미지 주소"></div>
+  <div class="field">
+    <label>사진 URL</label>
+    <div class="input-row">
+      <input id="fPhoto" placeholder="https:// 이미지 주소">
+      <button type="button" class="input-btn" id="searchPhotoBtn" aria-label="이름으로 네이버 이미지 검색">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="m20 20-3.2-3.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        검색
+      </button>
+    </div>
+  </div>
   <div class="field"><label>가격 (원)</label><input id="fPrice" type="number" inputmode="numeric" placeholder="예: 89000"></div>
   <div class="field"><label>사고 싶은 이유</label><textarea id="fReason" placeholder="필요한 이유를 적어주세요"></textarea></div>
   <label class="check-row"><input type="checkbox" id="fApproval"><span>바로 결재 올리기</span></label>
@@ -434,6 +452,14 @@ $('#fabBtn').addEventListener('click', () => {
   ['fName','fPhoto','fPrice','fReason'].forEach(id => $('#'+id).value = '');
   $('#fApproval').checked = false;
   openSheet('#addSheet');
+});
+
+/* ── 이름으로 네이버 이미지 검색 (사진 URL 따오기용) ── */
+$('#searchPhotoBtn').addEventListener('click', () => {
+  const q = $('#fName').value.trim();
+  if (!q) return toast('먼저 이름을 입력해 주세요');
+  const url = 'https://search.naver.com/search.naver?where=image&query=' + encodeURIComponent(q);
+  window.open(url, '_blank', 'noopener');
 });
 
 $('#saveItemBtn').addEventListener('click', async () => {
