@@ -35,19 +35,21 @@
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
+/* 480px 컨텐츠 바깥 여백도 앱 배경과 같은 색으로 채워 배경이 끊겨 보이지 않게 */
+html{background:var(--bg)}
 body{
   font-family:'Pretendard Variable',Pretendard,-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif;
   color:var(--ink);background:var(--bg);
   max-width:480px;margin:0 auto;padding-bottom:110px;
   letter-spacing:-.01em;
 }
-/* 배경의 부드러운 블루 광원 — 글래스가 얹힐 바탕 */
-.glow{position:fixed;inset:0;z-index:-1;overflow:hidden;max-width:480px;left:50%;transform:translateX(-50%)}
+/* 배경의 부드러운 블루 광원 — 화면 전체 폭을 채운다 */
+.glow{position:fixed;inset:0;z-index:-1;overflow:hidden}
 .glow::before,.glow::after{
   content:'';position:absolute;border-radius:50%;filter:blur(70px);opacity:.5;
 }
-.glow::before{width:340px;height:340px;background:#BFDBFF;top:-120px;right:-100px}
-.glow::after{width:300px;height:300px;background:#DCEBFF;bottom:10%;left:-140px}
+.glow::before{width:min(340px,70vw);height:min(340px,70vw);background:#BFDBFF;top:-120px;right:-8vw}
+.glow::after{width:min(300px,65vw);height:min(300px,65vw);background:#DCEBFF;bottom:10%;left:-8vw}
 
 .glass{
   background:var(--glass);
