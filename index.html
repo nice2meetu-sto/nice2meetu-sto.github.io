@@ -240,6 +240,72 @@ nav{
 .comment-view{margin-top:9px;font-size:13.5px;background:var(--bg);border-radius:11px;padding:10px 12px;line-height:1.55}
 .comment-view b{font-size:11.5px;color:var(--ink-2);display:block;margin-bottom:2px;font-weight:600}
 
+/* ── 결재 채팅(iMessage 느낌) ── */
+.chat{display:flex;flex-direction:column;gap:15px;margin:4px 0 6px}
+.msg{display:flex;flex-direction:column;max-width:84%}
+.msg.left{align-self:flex-start;align-items:flex-start}
+.msg.right{align-self:flex-end;align-items:flex-end}
+.msg-name{font-size:11.5px;color:var(--ink-2);font-weight:600;margin:0 6px 5px}
+.bubble{padding:11px 14px;border-radius:20px;font-size:14px;line-height:1.5;word-break:break-word}
+
+/* 아이템 미리보기 카드 (첫 메시지) */
+.msg.card-msg{max-width:94%}
+.pv-card{
+  background:#fff;border:1px solid var(--hairline);
+  border-radius:20px;border-bottom-left-radius:6px;overflow:hidden;
+  box-shadow:0 2px 12px rgba(0,0,0,.05);width:100%;
+}
+.pv-top{display:flex;gap:12px;padding:12px;align-items:flex-start}
+.pv-img{width:88px;height:88px;flex:0 0 auto;border-radius:13px;overflow:hidden;background:var(--gray-fill);position:relative}
+.pv-img img{width:100%;height:100%;object-fit:cover;display:block}
+.pv-img .fallback{display:none;width:100%;height:100%;align-items:center;justify-content:center;color:var(--ink-3)}
+.pv-img.noimg .fallback{display:flex}
+.pv-info{flex:1;min-width:0;padding-top:1px}
+.pv-name{font-size:15px;font-weight:700;line-height:1.35;letter-spacing:-.02em}
+.pv-price{font-size:19px;font-weight:800;margin-top:4px;letter-spacing:-.02em}
+.pv-badge{flex:0 0 auto;align-self:flex-start}
+.pv-reason{border-top:1px solid var(--hairline);padding:11px 14px;font-size:13.5px;line-height:1.55;background:rgba(0,0,0,.018)}
+.pv-reason .rb-label{font-size:11px;font-weight:600;color:var(--ink-2);display:block;margin-bottom:3px}
+
+/* 결재 의견 남기기 버튼 (미투표 상태) */
+.vote-cta{
+  border:1.5px solid var(--blue);background:rgba(10,132,255,.08);color:var(--blue-deep);
+  font-family:inherit;font-size:14px;font-weight:600;padding:11px 18px;
+  border-radius:20px;border-bottom-right-radius:6px;cursor:pointer;transition:transform .1s,opacity .1s;
+}
+.vote-cta:active{transform:scale(.97);opacity:.85}
+
+/* 결재 결과 말풍선 (오른쪽) */
+.vote-bubble{background:var(--blue);color:#fff;border-bottom-right-radius:6px}
+.vote-bubble.ok{background:var(--green)}
+.vote-bubble.no{background:var(--red)}
+.vote-bubble.hold{background:var(--orange)}
+.vote-bubble b{font-size:14.5px;font-weight:700}
+.vote-bubble .vc{margin-top:5px;font-size:13.5px;line-height:1.5;color:rgba(255,255,255,.92);font-weight:400}
+.redo-btn{background:none;border:none;color:var(--ink-3);font-size:11.5px;font-family:inherit;cursor:pointer;margin-top:5px;padding:2px 4px}
+
+/* 처리 결정 말풍선 (왼쪽, 내 답장) */
+.decide-bubble{background:#E9E9EB;color:var(--ink);border-bottom-left-radius:6px}
+.decide-q{font-size:13.5px;margin-bottom:10px;font-weight:500}
+.decide-actions{display:flex;flex-direction:column;gap:7px}
+.decide-actions button{
+  border:none;border-radius:13px;padding:12px;font-family:inherit;font-size:14px;font-weight:600;
+  cursor:pointer;background:#fff;color:var(--ink);transition:transform .1s,opacity .1s;
+}
+.decide-actions button.buy{background:var(--blue-deep);color:#fff}
+.decide-actions button:active{transform:scale(.98);opacity:.9}
+
+/* 결재 의견 입력 팝업 */
+#voteBackdrop{z-index:40}
+#voteSheet{z-index:41}
+#voteChoices{margin-bottom:14px}
+#voteCommentInput{
+  width:100%;border:1px solid var(--hairline);border-radius:13px;padding:12px 14px;
+  font-size:15px;font-family:inherit;color:var(--ink);height:82px;resize:none;background:#fff;outline:none;margin-bottom:14px;
+  transition:box-shadow .15s,border-color .15s;
+}
+#voteCommentInput:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(10,132,255,.15)}
+
 /* ── 토스트 ── */
 #toast{
   position:fixed;left:50%;transform:translateX(-50%) translateY(16px);bottom:104px;
@@ -328,6 +394,16 @@ nav{
   <div id="detailBody"></div>
 </div>
 
+<!-- 결재 의견 입력 팝업 -->
+<div class="backdrop" id="voteBackdrop"></div>
+<div class="sheet" id="voteSheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title" id="voteTitle">결재 의견</div>
+  <div class="vote-row" id="voteChoices"></div>
+  <textarea id="voteCommentInput" placeholder="결재 의견 (선택)"></textarea>
+  <button class="btn btn-primary" id="voteSaveBtn">저장하기</button>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -339,7 +415,8 @@ const APPROVERS = ['댈님', '쥠님'];  // 결재자 두 명 이름
 let items = [];
 let currentTab = '위시';
 let openItemId = null;
-let pendingVotes = {};
+let voteFor = null;    // 결재 의견 팝업 대상 (1 또는 2)
+let votePick = '';     // 팝업에서 선택한 결과
 
 const $ = s => document.querySelector(s);
 const won = n => '₩' + (Number(n) || 0).toLocaleString('ko-KR');
@@ -402,7 +479,8 @@ function render() {
     b.textContent = n;
   });
 
-  const list = items.filter(i => i.status === currentTab)
+  // 위시 탭에는 결재 대기 중인 아이템도 함께 노출
+  const list = items.filter(i => i.status === currentTab || (currentTab === '위시' && i.status === '결재'))
                     .sort((a,b) => String(b.id).localeCompare(String(a.id)));
   const area = $('#listArea');
   if (!list.length) {
@@ -412,7 +490,7 @@ function render() {
     return;
   }
   area.innerHTML = '<div class="grid">' + list.map(it => {
-    const st = currentTab === '결재' ? approvalSummary(it) : null;
+    const st = it.status === '결재' ? approvalSummary(it) : null;
     return `
     <div class="card" onclick="openDetail('${it.id}')">
       <div class="thumb ${it.photo ? '' : 'noimg'}">
@@ -441,9 +519,10 @@ $('#tabbar').addEventListener('click', e => {
 /* ── 시트 열기/닫기 ── */
 function openSheet(id) { $('#backdrop').classList.add('show'); $(id).classList.add('show'); }
 function closeSheets() {
+  closeVote();
   $('#backdrop').classList.remove('show');
   document.querySelectorAll('.sheet').forEach(s => s.classList.remove('show'));
-  openItemId = null; pendingVotes = {};
+  openItemId = null;
 }
 $('#backdrop').addEventListener('click', closeSheets);
 
@@ -491,7 +570,6 @@ $('#saveItemBtn').addEventListener('click', async () => {
 /* ── 상세 ── */
 function openDetail(id) {
   openItemId = id;
-  pendingVotes = {};
   renderDetail();
   openSheet('#detailSheet');
 }
@@ -499,6 +577,82 @@ function openDetail(id) {
 function renderDetail() {
   const it = items.find(i => String(i.id) === String(openItemId));
   if (!it) return closeSheets();
+
+  // 결재 대기 아이템은 채팅(iMessage) 스타일로
+  if (it.status === '결재') { $('#detailBody').innerHTML = renderApprovalChat(it); return; }
+
+  renderPlainDetail(it);
+}
+
+/* ── 결재 채팅 뷰 ── */
+function renderApprovalChat(it) {
+  const st = approvalSummary(it);
+  const bothVoted = it.a1 && it.a2;
+
+  // 1) 아이템 미리보기 카드 (첫 메시지)
+  const card = `
+    <div class="msg left card-msg">
+      <div class="pv-card">
+        <div class="pv-top">
+          <div class="pv-img ${it.photo ? '' : 'noimg'}">
+            ${it.photo ? `<img src="${esc(it.photo)}" alt="" onerror="this.parentElement.classList.add('noimg');this.remove()">` : ''}
+            <div class="fallback">${IMG_ICON}</div>
+          </div>
+          <div class="pv-info">
+            <div class="pv-name">${esc(it.name)}</div>
+            <div class="pv-price">${won(it.price)}</div>
+          </div>
+          <span class="pill big ${st.cls} pv-badge">${st.label}</span>
+        </div>
+        ${it.reason ? `<div class="pv-reason"><span class="rb-label">사고 싶은 이유</span>${esc(it.reason)}</div>` : ''}
+      </div>
+    </div>`;
+
+  // 2) 결재자별 메시지 (미투표: 버튼 / 투표: 오른쪽 말풍선)
+  const votes = [1,2].map(n => {
+    const result = it['a'+n], comment = it['a'+n+'c'];
+    const name = esc(APPROVERS[n-1]);
+    if (result) {
+      const cls = result === '승인' ? 'ok' : result === '반려' ? 'no' : 'hold';
+      return `
+        <div class="msg right">
+          <div class="msg-name">${name}</div>
+          <div class="bubble vote-bubble ${cls}">
+            <b>${result}</b>${comment ? `<div class="vc">${esc(comment)}</div>` : ''}
+          </div>
+          <button class="redo-btn" onclick="resetVote(${n})">다시 결재</button>
+        </div>`;
+    }
+    return `
+      <div class="msg right">
+        <div class="msg-name">${name}</div>
+        <button class="vote-cta" onclick="openVote(${n})">결재 의견 남기기</button>
+      </div>`;
+  }).join('');
+
+  // 3) 둘 다 결재 완료 → 왼쪽 말풍선으로 처리 선택
+  let decide = '';
+  if (bothVoted) {
+    decide = `
+      <div class="msg left">
+        <div class="msg-name">처리</div>
+        <div class="bubble decide-bubble">
+          <div class="decide-q">결재가 끝났어요. 어떻게 할까요?</div>
+          <div class="decide-actions">
+            <button class="buy" onclick="setStatus('삼')">구매하기</button>
+            <button onclick="setStatus('안삼')">안 사기로</button>
+            <button onclick="setStatus('위시')">위시로 보류</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  return `<div class="chat">${card}${votes}${decide}</div>
+    <button class="btn-danger" onclick="deleteItem()">아이템 삭제</button>`;
+}
+
+/* ── 일반 상세 뷰 (위시/안삼/구매완료) ── */
+function renderPlainDetail(it) {
   const st = approvalSummary(it);
   const hasVotes = it.a1 || it.a2;
 
@@ -508,12 +662,6 @@ function renderDetail() {
     <div class="btn-row">
       <button class="btn-chip" onclick="setStatus('삼')">구매함</button>
       <button class="btn-chip" onclick="setStatus('안삼')">안 사기로 함</button>
-    </div>`;
-  else if (it.status === '결재') actions = `
-    <div class="btn-row">
-      <button class="btn-chip" onclick="setStatus('삼')">구매함</button>
-      <button class="btn-chip" onclick="setStatus('안삼')">안 사기로 함</button>
-      <button class="btn-chip" onclick="setStatus('위시')">위시로</button>
     </div>`;
   else if (it.status === '안삼') actions = `
     <div class="btn-row">
@@ -526,32 +674,7 @@ function renderDetail() {
     </div>`;
 
   let approvalHtml = '';
-  if (it.status === '결재') {
-    approvalHtml = `<div class="section-label">결재 <span class="pill big ${st.cls}">${st.label}</span></div>` +
-      [1,2].map(n => {
-        const result = it['a'+n], comment = it['a'+n+'c'];
-        if (result) return `
-          <div class="approver">
-            <div class="approver-head">
-              <span class="approver-name">${esc(APPROVERS[n-1])}</span>
-              <span class="pill big ${result==='승인'?'ok':result==='반려'?'no':'hold'}">${result}</span>
-            </div>
-            ${comment ? `<div class="comment-view"><b>결재 의견</b>${esc(comment)}</div>` : ''}
-            <button class="save-vote secondary" onclick="resetVote(${n})">다시 결재하기</button>
-          </div>`;
-        const pv = pendingVotes[n] || {};
-        return `
-          <div class="approver">
-            <div class="approver-head"><span class="approver-name">${esc(APPROVERS[n-1])}</span></div>
-            <div class="vote-row">
-              ${['승인','반려','보류'].map(v =>
-                `<button class="vote ${pv.result===v?'sel':''}" data-v="${v}" onclick="pickVote(${n},'${v}')">${v}</button>`).join('')}
-            </div>
-            <textarea id="voteComment${n}" placeholder="결재 의견 (선택)">${esc(pv.comment||'')}</textarea>
-            <button class="save-vote" onclick="saveVote(${n})">의견 저장</button>
-          </div>`;
-      }).join('');
-  } else if (hasVotes) {
+  if (hasVotes) {
     approvalHtml = `<div class="section-label">결재 기록 <span class="pill big ${st.cls}">${st.label}</span></div>` +
       [1,2].map(n => {
         const result = it['a'+n], comment = it['a'+n+'c'];
@@ -574,7 +697,6 @@ function renderDetail() {
     </div>
     <div class="detail-name">${esc(it.name)}</div>
     <div class="detail-price">${won(it.price)}</div>
-    <div class="detail-meta">${esc(it.createdAt)} 등록 · 상태: ${esc(it.status === '결재' ? '결재 대기' : it.status === '삼' ? '구매완료' : it.status)}</div>
     ${it.reason ? `<div class="reason-box"><span class="rb-label">사고 싶은 이유</span>${esc(it.reason)}</div>` : ''}
     ${approvalHtml}
     <div class="section-label">처리</div>
@@ -596,27 +718,43 @@ async function setStatus(status) {
 }
 function requestApproval() { setStatus('결재'); }
 
-/* ── 결재 ── */
-function pickVote(n, v) {
-  pendingVotes[n] = { ...(pendingVotes[n]||{}), result: v, comment: $('#voteComment'+n)?.value || '' };
-  const other = n === 1 ? 2 : 1;
-  const otherTa = $('#voteComment'+other);
-  if (otherTa) pendingVotes[other] = { ...(pendingVotes[other]||{}), comment: otherTa.value };
-  renderDetail();
-}
-async function saveVote(n) {
-  const pv = pendingVotes[n];
-  const comment = $('#voteComment'+n)?.value.trim() || '';
-  if (!pv || !pv.result) return toast('승인·반려·보류 중 하나를 선택해 주세요');
+/* ── 결재 의견 팝업 ── */
+function openVote(n) {
   const it = items.find(i => String(i.id) === String(openItemId));
-  it['a'+n] = pv.result;
-  it['a'+n+'c'] = comment;
-  delete pendingVotes[n];
-  render(); renderDetail();
-  toast('결재 의견을 저장했습니다');
-  const r = await api({ action:'approve', id: it.id, approver: n, result: pv.result, comment });
-  if (!r.ok) toast('저장에 실패했습니다. 다시 시도해 주세요');
+  if (!it) return;
+  voteFor = n;
+  votePick = it['a'+n] || '';
+  $('#voteTitle').textContent = APPROVERS[n-1] + ' · 결재 의견';
+  $('#voteChoices').innerHTML = ['승인','반려','보류'].map(v =>
+    `<button class="vote ${votePick===v?'sel':''}" data-v="${v}" onclick="pickVoteChoice('${v}')">${v}</button>`).join('');
+  $('#voteCommentInput').value = it['a'+n+'c'] || '';
+  $('#voteBackdrop').classList.add('show');
+  $('#voteSheet').classList.add('show');
 }
+function pickVoteChoice(v) {
+  votePick = v;
+  document.querySelectorAll('#voteChoices .vote').forEach(b => b.classList.toggle('sel', b.dataset.v === v));
+}
+function closeVote() {
+  $('#voteBackdrop').classList.remove('show');
+  $('#voteSheet').classList.remove('show');
+  voteFor = null; votePick = '';
+}
+$('#voteBackdrop').addEventListener('click', closeVote);
+$('#voteSaveBtn').addEventListener('click', async () => {
+  if (!votePick) return toast('승인·반려·보류 중 하나를 선택해 주세요');
+  const n = voteFor;
+  const comment = $('#voteCommentInput').value.trim();
+  const it = items.find(i => String(i.id) === String(openItemId));
+  if (!it) return closeVote();
+  it['a'+n] = votePick;
+  it['a'+n+'c'] = comment;
+  const result = votePick;
+  closeVote(); render(); renderDetail();
+  toast('결재 의견을 저장했습니다');
+  const r = await api({ action:'approve', id: it.id, approver: n, result, comment });
+  if (!r.ok) toast('저장에 실패했습니다. 다시 시도해 주세요');
+});
 async function resetVote(n) {
   const it = items.find(i => String(i.id) === String(openItemId));
   it['a'+n] = ''; it['a'+n+'c'] = '';
