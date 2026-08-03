@@ -316,6 +316,13 @@ nav{
 }
 .modal.show{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1)}
 .modal .sheet-title{text-align:center;margin-bottom:16px}
+.vote-cancel-btn{
+  position:absolute;top:12px;right:14px;border:none;
+  background:rgba(255,59,48,.12);color:var(--red);
+  font-family:inherit;font-size:12px;font-weight:700;padding:6px 12px;border-radius:99px;cursor:pointer;
+  transition:transform .1s,opacity .1s;
+}
+.vote-cancel-btn:active{transform:scale(.96);opacity:.85}
 #voteChoices{margin-bottom:14px}
 #voteCommentInput{
   width:100%;border:1px solid var(--hairline);border-radius:13px;padding:12px 14px;
@@ -418,6 +425,7 @@ nav{
 <!-- 결재 의견 입력 팝업 (중앙 모달) -->
 <div class="backdrop" id="voteBackdrop"></div>
 <div class="modal" id="voteModal">
+  <button class="vote-cancel-btn" id="voteResetBtn" style="display:none">결재 취소</button>
   <div class="sheet-title" id="voteTitle">결재 의견</div>
   <div class="vote-row" id="voteChoices"></div>
   <textarea id="voteCommentInput" placeholder="결재 의견 (선택)"></textarea>
@@ -822,6 +830,7 @@ function openVote(id, n) {
   votePick = it['a'+n] || '';
   const editing = !!it['a'+n];
   $('#voteTitle').textContent = APPROVERS[n-1] + (editing ? ' · 결재 수정' : ' · 결재 의견');
+  $('#voteResetBtn').style.display = editing ? '' : 'none';   // 수정 시에만 결재 취소 노출
   $('#voteChoices').innerHTML = ['승인','반려','보류'].map(v =>
     `<button class="vote ${votePick===v?'sel':''}" data-v="${v}" onclick="pickVoteChoice('${v}')">${v}</button>`).join('');
   $('#voteCommentInput').value = it['a'+n+'c'] || '';
@@ -839,6 +848,11 @@ function closeVote() {
 }
 $('#voteBackdrop').addEventListener('click', closeVote);
 $('#voteCancelBtn').addEventListener('click', closeVote);
+$('#voteResetBtn').addEventListener('click', () => {
+  const id = voteItemId, n = voteFor;
+  closeVote();
+  if (id != null && n != null) resetVote(id, n);   // 결재 결과·의견 초기화 → 다시 '의견 남기기'
+});
 $('#voteSaveBtn').addEventListener('click', async () => {
   if (!votePick) return toast('승인·반려·보류 중 하나를 선택해 주세요');
   const n = voteFor;
