@@ -691,10 +691,16 @@ function renderApprovalChat(it, opts = {}) {
       </div>
     </div>`;
 
-  // 2) 결재한 순서대로 오른쪽 말풍선
-  const ordered = [];
-  (voteOrder[it.id] || []).forEach(n => { if (it['a'+n] && !ordered.includes(n)) ordered.push(n); });
-  [1,2].forEach(n => { if (it['a'+n] && !ordered.includes(n)) ordered.push(n); });
+  // 2) 결재한 순서대로 오른쪽 말풍선 (이른 결재가 위, 늦은 결재가 아래)
+  const ordered = [1,2].filter(n => it['a'+n]).sort((x,y) => {
+    const tx = Number(it['a'+x+'t']) || 0;   // 결재 시각(백엔드 저장)
+    const ty = Number(it['a'+y+'t']) || 0;
+    if (tx !== ty) return tx - ty;
+    const ox = (voteOrder[it.id]||[]).indexOf(x);   // 시각이 없으면 이번 세션 클릭 순서
+    const oy = (voteOrder[it.id]||[]).indexOf(y);
+    if (ox !== -1 && oy !== -1) return ox - oy;
+    return x - y;                                    // 그 외 슬롯 순서
+  });
   const votes = ordered.map(n => {
     const result = it['a'+n], comment = it['a'+n+'c'];
     const cls = result === '승인' ? 'ok' : result === '반려' ? 'no' : 'hold';
@@ -839,19 +845,20 @@ $('#voteSaveBtn').addEventListener('click', async () => {
   if (!it) return closeVote();
   it['a'+n] = votePick;
   it['a'+n+'c'] = comment;
+  const at = Date.now();
+  it['a'+n+'t'] = at;   // 결재 시각 기록 (순서 판정용)
   const result = votePick;
-  // 결재한 순서 기록
   if (!voteOrder[it.id]) voteOrder[it.id] = [];
   if (!voteOrder[it.id].includes(n)) voteOrder[it.id].push(n);
   closeVote(); refreshViews();
   toast('결재 의견을 저장했습니다');
-  const r = await api({ action:'approve', id: it.id, approver: n, result, comment });
+  const r = await api({ action:'approve', id: it.id, approver: n, result, comment, at });
   if (!r.ok) toast('저장에 실패했습니다. 다시 시도해 주세요');
 });
 async function resetVote(id, n) {
   const it = items.find(i => String(i.id) === String(id));
   if (!it) return;
-  it['a'+n] = ''; it['a'+n+'c'] = '';
+  it['a'+n] = ''; it['a'+n+'c'] = ''; it['a'+n+'t'] = '';
   if (voteOrder[it.id]) voteOrder[it.id] = voteOrder[it.id].filter(x => x !== n);
   refreshViews();
   const r = await api({ action:'approve', id: it.id, approver: n, result:'', comment:'' });

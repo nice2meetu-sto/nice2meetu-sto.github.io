@@ -18,18 +18,18 @@ const SHEET_NAME = '위시리스트';
 
 // 시트 컬럼: A:id B:이름 C:사진URL D:가격 E:이유 F:상태 G:등록일
 //           H:결재자1결과 I:결재자1의견 J:결재자2결과 K:결재자2의견
+//           L:결재자1시각 M:결재자2시각  (순서 판정용, epoch ms)
 const HEADER = ['id', '이름', '사진URL', '가격', '이유', '상태', '등록일',
-                '결재자1결과', '결재자1의견', '결재자2결과', '결재자2의견'];
+                '결재자1결과', '결재자1의견', '결재자2결과', '결재자2의견',
+                '결재자1시각', '결재자2시각'];
 
-/** 최초 1회 실행: 시트와 헤더 생성 */
+/** 최초 1회 실행: 시트와 헤더 생성 (재실행 시 헤더 행 갱신) */
 function setup() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) sheet = ss.insertSheet(SHEET_NAME);
-  if (sheet.getLastRow() === 0) {
-    sheet.getRange(1, 1, 1, HEADER.length).setValues([HEADER]).setFontWeight('bold');
-    sheet.setFrozenRows(1);
-  }
+  sheet.getRange(1, 1, 1, HEADER.length).setValues([HEADER]).setFontWeight('bold');
+  sheet.setFrozenRows(1);
 }
 
 function getSheet_() {
@@ -68,7 +68,8 @@ function doGet(e) {
     status: String(r[5]),
     createdAt: r[6] instanceof Date ? Utilities.formatDate(r[6], 'Asia/Seoul', 'yyyy-MM-dd') : String(r[6]),
     a1: String(r[7]), a1c: String(r[8]),
-    a2: String(r[9]), a2c: String(r[10])
+    a2: String(r[9]), a2c: String(r[10]),
+    a1t: Number(r[11]) || '', a2t: Number(r[12]) || ''
   }));
   return json_({ ok: true, items: items });
 }
@@ -78,7 +79,7 @@ function doGet(e) {
  *  add     : { action, name, photo, price, reason, status }
  *  update  : { action, id, name, photo, price, reason }   // 상품 정보 수정 (상태·결재 내역은 유지)
  *  status  : { action, id, status }           // 상태 변경 ('결재'로 변경 시 결재 내역 초기화)
- *  approve : { action, id, approver(1|2), result('승인'|'반려'|'보류'), comment }
+ *  approve : { action, id, approver(1|2), result('승인'|'반려'|'보류'), comment, at(결재 시각 ms) }
  *  delete  : { action, id }
  */
 function doPost(e) {
@@ -92,7 +93,7 @@ function doPost(e) {
       const id = String(new Date().getTime());
       sheet.appendRow([
         id, req.name || '', req.photo || '', Number(req.price) || 0,
-        req.reason || '', req.status || '위시', new Date(), '', '', '', ''
+        req.reason || '', req.status || '위시', new Date(), '', '', '', '', '', ''
       ]);
       return json_({ ok: true, id: id });
     }
@@ -111,15 +112,19 @@ function doPost(e) {
     if (req.action === 'status') {
       sheet.getRange(row, 6).setValue(req.status);
       if (req.status === '결재') {
-        // 새로 결재를 올리면 이전 결재 내역 초기화
-        sheet.getRange(row, 8, 1, 4).setValues([['', '', '', '']]);
+        // 새로 결재를 올리면 이전 결재 내역(결과·의견·시각) 초기화
+        sheet.getRange(row, 8, 1, 6).setValues([['', '', '', '', '', '']]);
       }
       return json_({ ok: true });
     }
 
     if (req.action === 'approve') {
-      const col = Number(req.approver) === 1 ? 8 : 10;
+      const n = Number(req.approver);
+      const col = n === 1 ? 8 : 10;    // 결과·의견 열
+      const tcol = n === 1 ? 12 : 13;  // 결재 시각 열
       sheet.getRange(row, col, 1, 2).setValues([[req.result || '', req.comment || '']]);
+      // 결재하면 시각 기록, 취소(빈 결과)면 시각도 지움
+      sheet.getRange(row, tcol).setValue(req.result ? (Number(req.at) || new Date().getTime()) : '');
       return json_({ ok: true });
     }
 
