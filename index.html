@@ -367,11 +367,11 @@ nav{
 </button>
 
 <nav class="glass" id="tabbar">
-  <button class="tab active" data-tab="결재">
+  <button class="tab" data-tab="결재">
     <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="M3 13h4l2 3h6l2-3h4M5 6h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
     결재 대기<span class="badge" hidden></span>
   </button>
-  <button class="tab" data-tab="위시">
+  <button class="tab active" data-tab="위시">
     <svg width="21" height="21" viewBox="0 0 24 24" fill="none"><path d="m12 3 2.7 5.6 6.3.9-4.5 4.3 1 6.2L12 17l-5.5 3 1-6.2L3 9.5l6.3-.9L12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
     위시<span class="badge" hidden></span>
   </button>
@@ -436,7 +436,7 @@ const APPROVERS = ['댈님', '쥠님'];  // 결재자 두 명 이름
 /* ═══════════════════════════════════════════════════════ */
 
 let items = [];
-let currentTab = '결재';
+let currentTab = '위시';
 let openItemId = null;
 let editItemId = null; // 아이템 수정 대상 (null이면 새로 추가)
 let voteItemId = null; // 결재 의견 팝업 대상 아이템
