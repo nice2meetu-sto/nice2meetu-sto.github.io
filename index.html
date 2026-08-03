@@ -483,9 +483,9 @@ async function api(body) {
 /* ── 결재 결과 판정 ── */
 function approvalSummary(it) {
   const votes = [it.a1, it.a2];
-  if (votes.includes('보류')) return { label:'보류 중', cls:'hold' };
-  if (it.a1 === '승인' && it.a2 === '승인') return { label:'구매 가능', cls:'ok' };
-  if (it.a1 === '반려' && it.a2 === '반려') return { label:'구매 불가', cls:'no' };
+  if (votes.includes('보류')) return { label:'보류', cls:'hold' };
+  if (it.a1 === '승인' && it.a2 === '승인') return { label:'승인', cls:'ok' };
+  if (it.a1 === '반려' && it.a2 === '반려') return { label:'반려', cls:'no' };
   if (it.a1 && it.a2) return { label:'의견 갈림', cls:'mixed' };
   const n = votes.filter(Boolean).length;
   return { label:'결재 중 ' + n + '/2', cls:'wait' };
@@ -525,7 +525,8 @@ function render() {
   }
 
   area.innerHTML = '<div class="grid">' + list.map(it => {
-    const st = it.status === '결재' ? approvalSummary(it) : null;
+    // 결재 결과 배지는 결재 대기뿐 아니라, 결재 이력이 있는 아이템이면 다른 탭에서도 유지
+    const st = (it.status === '결재' || it.a1 || it.a2) ? approvalSummary(it) : null;
     return `
     <div class="card" onclick="openDetail('${it.id}')">
       <div class="thumb ${it.photo ? '' : 'noimg'}">
