@@ -711,7 +711,7 @@ function renderApprovalChat(it, opts = {}) {
         <div class="bubble vote-bubble ${cls}">
           <b>${result}</b>${comment ? `<div class="vc">${esc(comment)}</div>` : ''}
         </div>
-        <button class="redo-btn" onclick="resetVote('${it.id}',${n})">다시 결재</button>
+        <button class="redo-btn" onclick="openVote('${it.id}',${n})">결재 수정</button>
       </div>`;
   }).join('');
 
@@ -820,7 +820,8 @@ function openVote(id, n) {
   if (!it) return;
   voteItemId = id; voteFor = n;
   votePick = it['a'+n] || '';
-  $('#voteTitle').textContent = APPROVERS[n-1] + ' · 결재 의견';
+  const editing = !!it['a'+n];
+  $('#voteTitle').textContent = APPROVERS[n-1] + (editing ? ' · 결재 수정' : ' · 결재 의견');
   $('#voteChoices').innerHTML = ['승인','반려','보류'].map(v =>
     `<button class="vote ${votePick===v?'sel':''}" data-v="${v}" onclick="pickVoteChoice('${v}')">${v}</button>`).join('');
   $('#voteCommentInput').value = it['a'+n+'c'] || '';
@@ -844,15 +845,17 @@ $('#voteSaveBtn').addEventListener('click', async () => {
   const comment = $('#voteCommentInput').value.trim();
   const it = items.find(i => String(i.id) === String(voteItemId));
   if (!it) return closeVote();
+  const isEdit = !!it['a'+n];   // 이미 결재한 상태면 수정
   it['a'+n] = votePick;
   it['a'+n+'c'] = comment;
-  const at = Date.now();
-  it['a'+n+'t'] = at;   // 결재 시각 기록 (순서 판정용)
+  // 첫 결재면 지금 시각, 수정이면 기존 시각 유지 (순서 안 바뀌게)
+  const at = isEdit ? (Number(it['a'+n+'t']) || Date.now()) : Date.now();
+  it['a'+n+'t'] = at;
   const result = votePick;
   if (!voteOrder[it.id]) voteOrder[it.id] = [];
   if (!voteOrder[it.id].includes(n)) voteOrder[it.id].push(n);
   closeVote(); refreshViews();
-  toast('결재 의견을 저장했습니다');
+  toast(isEdit ? '결재 의견을 수정했습니다' : '결재 의견을 저장했습니다');
   const r = await api({ action:'approve', id: it.id, approver: n, result, comment, at });
   if (!r.ok) toast('저장에 실패했습니다. 다시 시도해 주세요');
 });
