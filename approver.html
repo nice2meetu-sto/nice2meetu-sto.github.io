@@ -472,11 +472,11 @@ const DEMO = [
 
 /* ── API ── */
 async function loadItems() {
-  if (!API_URL) { items = structuredClone(DEMO); render(); return; }
+  if (!API_URL) { items = structuredClone(DEMO); render(); if (currentTab === '결재') scrollChatBottom(); return; }
   try {
     const res = await fetch(API_URL);
     const data = await res.json();
-    if (data.ok) { items = data.items; render(); }
+    if (data.ok) { items = data.items; render(); if (currentTab === '결재') scrollChatBottom(); }
     else throw new Error(data.error);
   } catch (e) {
     $('#listArea').innerHTML = '<div class="empty"><p>데이터를 불러오지 못했습니다.<br>API_URL 설정을 확인해 주세요.</p></div>';
@@ -555,6 +555,13 @@ function render() {
   }).join('') + '</div>';
 }
 
+/* 결재 대기 탭: 문자창처럼 스크롤을 가장 아래(최신 메시지)로 */
+function scrollChatBottom() {
+  const go = () => window.scrollTo(0, document.body.scrollHeight);
+  requestAnimationFrame(go);   // 렌더 직후
+  setTimeout(go, 250);         // 폰트·비동기 로딩 후 높이 변화 대비
+}
+
 /* ── 탭 ── */
 $('#tabbar').addEventListener('click', e => {
   const btn = e.target.closest('.tab');
@@ -562,7 +569,8 @@ $('#tabbar').addEventListener('click', e => {
   currentTab = btn.dataset.tab;
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t === btn));
   render();
-  window.scrollTo({ top: 0 });
+  if (currentTab === '결재') scrollChatBottom();   // 결재 대기는 최신 메시지가 보이게 맨 아래로
+  else window.scrollTo({ top: 0 });
 });
 
 /* ── 시트 열기/닫기 ── */
