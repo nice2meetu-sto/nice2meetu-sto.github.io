@@ -78,7 +78,7 @@ function doGet(e) {
  * 쓰기 작업 — 요청 본문(JSON)의 action으로 분기
  *  add     : { action, name, photo, price, reason, status }
  *  update  : { action, id, name, photo, price, reason }   // 상품 정보 수정 (상태·결재 내역은 유지)
- *  status  : { action, id, status }           // 상태 변경 ('결재'로 변경 시 결재 내역 초기화)
+ *  status  : { action, id, status }           // 상태 변경 (결재 내역은 유지)
  *  approve : { action, id, approver(1|2), result('승인'|'반려'|'보류'), comment, at(결재 시각 ms) }
  *  delete  : { action, id }
  */
@@ -110,11 +110,8 @@ function doPost(e) {
     }
 
     if (req.action === 'status') {
+      // 상태만 변경 — 결재 결과·의견·시각은 그대로 유지 (재상신해도 보존)
       sheet.getRange(row, 6).setValue(req.status);
-      if (req.status === '결재') {
-        // 새로 결재를 올리면 이전 결재 내역(결과·의견·시각) 초기화
-        sheet.getRange(row, 8, 1, 6).setValues([['', '', '', '', '', '']]);
-      }
       return json_({ ok: true });
     }
 

@@ -800,7 +800,7 @@ async function setStatus(status, id = openItemId) {
   if (!it) return;
   const prev = it.status;
   it.status = status;
-  if (status === '결재') { it.a1 = it.a1c = it.a2 = it.a2c = ''; delete voteOrder[it.id]; }
+  // 재상신(결재로 다시 올림) 시에도 기존 결재 의견은 유지 — 결재자가 '다시 결재'로만 수정
   refreshViews();
   toast({'삼':'구매완료로 이동했습니다','안삼':'안삼으로 이동했습니다','위시':'위시로 이동했습니다','결재':'결재를 올렸습니다'}[status]);
   const r = await api({ action:'status', id: it.id, status });
