@@ -257,6 +257,8 @@ nav{
 
 /* ── 결재 채팅(iMessage 느낌) ── */
 .approval-convo{margin-bottom:24px}
+/* 결재 대기 탭 하단 여백 — 마지막 대화가 탭바에 가리지 않도록 */
+.tab-bottom-space{height:calc(80px + env(safe-area-inset-bottom))}
 .chat{display:flex;flex-direction:column;gap:14px}
 .msg{display:flex;flex-direction:column;max-width:84%}
 .msg.left{align-self:flex-start;align-items:flex-start}
@@ -531,7 +533,7 @@ function render() {
 
   // 결재 대기 탭은 채팅 레이아웃으로 바로 렌더
   if (currentTab === '결재') {
-    area.innerHTML = list.map(it => renderApprovalChat(it)).join('');
+    area.innerHTML = list.map(it => renderApprovalChat(it)).join('') + '<div class="tab-bottom-space"></div>';
     return;
   }
 
