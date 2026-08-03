@@ -259,6 +259,18 @@ nav{
 .approval-convo{margin-bottom:24px}
 /* 결재 대기 탭 하단 여백 — 마지막 대화가 탭바에 가리지 않도록 */
 .tab-bottom-space{height:calc(80px + env(safe-area-inset-bottom))}
+
+/* 최근 결재 결과 요약 카드 (결재 대기 아이템이 없을 때) */
+.summary-cap{font-size:12.5px;font-weight:600;color:var(--ink-2);margin:2px 4px 10px}
+.summary-card{width:100%}
+.summary-records{padding:2px 14px 0}
+.summary-records .section-label{margin:8px 0 10px}
+.result-bar{
+  margin-top:12px;display:flex;align-items:center;justify-content:center;
+  padding:15px;font-size:15px;font-weight:800;letter-spacing:-.02em;border-top:1px solid var(--hairline);
+}
+.result-bar.buy{background:rgba(52,199,89,.12);color:#1E9E4A}
+.result-bar.no{background:rgba(255,59,48,.10);color:var(--red)}
 .chat{display:flex;flex-direction:column;gap:14px}
 .msg{display:flex;flex-direction:column;max-width:84%}
 .msg.left{align-self:flex-start;align-items:flex-start}
@@ -504,6 +516,59 @@ function approvalSummary(it) {
   return { label:'결재 중 ' + n + '/2', cls:'wait' };
 }
 
+/* ── 마지막으로 처리(삼/안삼)된 결재 아이템 찾기 ── */
+function lastProcessedItem() {
+  const done = items.filter(i => (i.status === '삼' || i.status === '안삼') && (i.a1 || i.a2));
+  if (!done.length) return null;
+  const key = i => Math.max(Number(i.a1t) || 0, Number(i.a2t) || 0) || Number(i.id) || 0;
+  return done.sort((a, b) => key(b) - key(a))[0];
+}
+
+/* ── 결재 결과 요약 카드 (아이템 정보 + 결재 기록 + 처리 결과) ── */
+function renderResultSummary(it) {
+  const st = approvalSummary(it);
+  const records = [1,2].map(n => {
+    const result = it['a'+n], comment = it['a'+n+'c'];
+    if (!result) return '';
+    const cls = result === '승인' ? 'ok' : result === '반려' ? 'no' : 'hold';
+    return `
+      <div class="approver">
+        <div class="approver-head">
+          <span class="approver-name">${esc(APPROVERS[n-1])}</span>
+          <span class="pill big ${cls}">${result}</span>
+        </div>
+        ${comment ? `<div class="comment-view"><b>결재 의견</b>${esc(comment)}</div>` : ''}
+      </div>`;
+  }).join('');
+
+  const isBuy = it.status === '삼';
+  const resultLabel = isBuy ? '구매완료' : '안 사기로 함';
+
+  return `
+  <div class="approval-convo">
+    <div class="summary-cap">최근 결재 결과</div>
+    <div class="pv-card summary-card">
+      <div class="pv-top">
+        <div class="pv-img ${it.photo ? '' : 'noimg'}">
+          ${it.photo ? `<img src="${esc(it.photo)}" alt="" onerror="this.parentElement.classList.add('noimg');this.remove()">` : ''}
+          <div class="fallback">${IMG_ICON}</div>
+        </div>
+        <div class="pv-info">
+          <span class="pill big ${st.cls} pv-badge">${st.label}</span>
+          <div class="pv-name">${esc(it.name)}</div>
+          <div class="pv-price">${won(it.price)}</div>
+        </div>
+      </div>
+      ${it.reason ? `<div class="pv-reason"><span class="rb-label">사고 싶은 이유</span>${esc(it.reason)}</div>` : ''}
+      <div class="summary-records">
+        <div class="section-label">결재 기록</div>
+        ${records}
+      </div>
+      <div class="result-bar ${isBuy ? 'buy' : 'no'}">처리 결과 · ${resultLabel}</div>
+    </div>
+  </div>`;
+}
+
 /* ── 렌더 ── */
 function render() {
   // 합계 카드는 결재 대기 탭에서만 숨김
@@ -525,6 +590,11 @@ function render() {
                     .sort((a,b) => String(b.id).localeCompare(String(a.id)));
   const area = $('#listArea');
   if (!list.length) {
+    // 결재 대기 아이템이 없으면, 마지막으로 처리(삼/안삼)된 결재 결과 요약 카드 표시
+    if (currentTab === '결재') {
+      const last = lastProcessedItem();
+      if (last) { area.innerHTML = renderResultSummary(last) + '<div class="tab-bottom-space"></div>'; return; }
+    }
     const msg = { '결재':'결재 대기 중인 아이템이 없습니다.', '위시':'아직 위시가 없습니다.<br>+ 버튼으로 추가해 보세요.',
                   '안삼':'구매하지 않기로 한 아이템이 없습니다.', '삼':'아직 구매한 아이템이 없습니다.' }[currentTab];
     area.innerHTML = `<div class="empty">${IMG_ICON}<p>${msg}</p></div>`;
