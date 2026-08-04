@@ -483,15 +483,55 @@ const DEMO = [
 ];
 
 /* ── API ── */
+/* ── 로컬 캐시 (즉시 표시용) ── */
+const CACHE_KEY = 'wishlist_items_v1';
+function readCache() {
+  try { const v = JSON.parse(localStorage.getItem(CACHE_KEY)); return Array.isArray(v) ? v : null; }
+  catch (e) { return null; }
+}
+function writeCache(list) {
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(list)); } catch (e) {}
+}
+
+/* ── 타임아웃 + 재시도 fetch (Apps Script 지연·일시 오류 대비) ── */
+async function fetchJSON(url, { timeout = 20000, retries = 1 } = {}) {
+  for (let attempt = 0; ; attempt++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeout);
+    try {
+      const res = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(timer);
+      return await res.json();
+    } catch (e) {
+      clearTimeout(timer);
+      if (attempt >= retries) throw e;
+      await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));   // 1.5s, 3s 백오프
+    }
+  }
+}
+
 async function loadItems() {
   if (!API_URL) { items = structuredClone(DEMO); render(); if (currentTab === '결재') scrollChatBottom(); return; }
+
+  // 1) 캐시가 있으면 즉시 표시 (체감 로딩 0초)
+  const cached = readCache();
+  if (cached) { items = cached; render(); if (currentTab === '결재') scrollChatBottom(); }
+
+  // 2) 백그라운드로 최신 데이터 갱신
   try {
-    const res = await fetch(API_URL);
-    const data = await res.json();
-    if (data.ok) { items = data.items; render(); if (currentTab === '결재') scrollChatBottom(); }
-    else throw new Error(data.error);
+    const data = await fetchJSON(API_URL);
+    if (data && data.ok) {
+      items = data.items;
+      writeCache(items);
+      render(); if (currentTab === '결재') scrollChatBottom();
+    } else throw new Error((data && data.error) || 'bad response');
   } catch (e) {
-    $('#listArea').innerHTML = '<div class="empty"><p>데이터를 불러오지 못했습니다.<br>API_URL 설정을 확인해 주세요.</p></div>';
+    // 캐시가 떠 있으면 조용히 유지, 없으면 오류 안내
+    if (!cached) {
+      $('#listArea').innerHTML = '<div class="empty"><p>데이터를 불러오지 못했습니다.<br>잠시 후 다시 시도해 주세요.</p></div>';
+    } else {
+      toast('최신 데이터를 불러오지 못해 저장된 내용을 표시합니다');
+    }
   }
 }
 
