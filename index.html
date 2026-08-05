@@ -506,16 +506,17 @@ async function fetchJSON(url, { timeout = 20000, retries = 1 } = {}) {
   }
 }
 
-async function loadItems({ useCache = true } = {}) {
+async function loadItems({ useCache = true, fresh = false } = {}) {
   if (!API_URL) { items = structuredClone(DEMO); render(); if (currentTab === '결재') scrollChatBottom(); return true; }
 
   // 1) 캐시가 있으면 즉시 표시 (체감 로딩 0초) — 수동 새로고침 땐 현재 화면 유지
   const cached = readCache();
   if (useCache && cached) { items = cached; render(); if (currentTab === '결재') scrollChatBottom(); }
 
-  // 2) 백그라운드로 최신 데이터 갱신
+  // 2) 백그라운드로 최신 데이터 갱신 (fresh=서버 캐시까지 건너뜀)
   try {
-    const data = await fetchJSON(API_URL);
+    const url = fresh ? API_URL + (API_URL.indexOf('?') >= 0 ? '&' : '?') + 'fresh=1' : API_URL;
+    const data = await fetchJSON(url);
     if (data && data.ok) {
       items = data.items;
       writeCache(items);
@@ -537,7 +538,7 @@ async function refreshData() {
   const btn = $('#refreshBtn');
   if (btn && btn.classList.contains('spinning')) return;
   if (btn) btn.classList.add('spinning');
-  const ok = await loadItems({ useCache: false });
+  const ok = await loadItems({ useCache: false, fresh: true });
   if (btn) btn.classList.remove('spinning');
   toast(ok ? '새로고침 완료' : '불러오지 못했어요 · 잠시 후 다시 시도해 주세요');
 }
