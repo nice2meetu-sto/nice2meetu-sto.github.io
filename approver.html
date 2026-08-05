@@ -60,7 +60,17 @@ body{
 }
 
 /* ── 헤더 ── */
-header{padding:26px 18px 8px}
+header{padding:26px 18px 8px;position:relative}
+.refresh-btn{
+  position:absolute;top:calc(22px + env(safe-area-inset-top));right:16px;
+  width:42px;height:42px;border-radius:50%;border:1px solid var(--hairline);cursor:pointer;
+  background:var(--glass);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);
+  font-size:19px;line-height:1;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 8px rgba(0,0,0,.06);transition:transform .1s;
+}
+.refresh-btn:active{transform:scale(.92)}
+.refresh-btn.spinning{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .app-title{font-size:30px;font-weight:800;letter-spacing:-.03em}
 .app-sub{font-size:13px;color:var(--ink-2);margin-top:3px}
 .totals{display:flex;gap:10px;margin:16px 0 4px}
@@ -369,6 +379,7 @@ nav{
 <div class="glow"></div>
 
 <header>
+  <button class="refresh-btn" id="refreshBtn" aria-label="새로고침">🔄</button>
   <div class="app-title">위시리스트 💭</div>
   <div class="app-sub">세상은 넓고 사고 싶은 건 많다</div>
   <div class="totals" id="totals">
@@ -511,12 +522,12 @@ async function fetchJSON(url, { timeout = 20000, retries = 1 } = {}) {
   }
 }
 
-async function loadItems() {
-  if (!API_URL) { items = structuredClone(DEMO); render(); if (currentTab === '결재') scrollChatBottom(); return; }
+async function loadItems({ useCache = true } = {}) {
+  if (!API_URL) { items = structuredClone(DEMO); render(); if (currentTab === '결재') scrollChatBottom(); return true; }
 
-  // 1) 캐시가 있으면 즉시 표시 (체감 로딩 0초)
+  // 1) 캐시가 있으면 즉시 표시 (체감 로딩 0초) — 수동 새로고침 땐 현재 화면 유지
   const cached = readCache();
-  if (cached) { items = cached; render(); if (currentTab === '결재') scrollChatBottom(); }
+  if (useCache && cached) { items = cached; render(); if (currentTab === '결재') scrollChatBottom(); }
 
   // 2) 백그라운드로 최신 데이터 갱신
   try {
@@ -525,25 +536,44 @@ async function loadItems() {
       items = data.items;
       writeCache(items);
       render(); if (currentTab === '결재') scrollChatBottom();
-    } else throw new Error((data && data.error) || 'bad response');
+      return true;
+    }
+    throw new Error((data && data.error) || 'bad response');
   } catch (e) {
-    // 캐시가 떠 있으면 조용히 유지, 없으면 오류 안내
+    // 캐시가 아예 없을 때만 오류 화면, 있으면 현재 화면 유지
     if (!cached) {
       $('#listArea').innerHTML = '<div class="empty"><p>데이터를 불러오지 못했습니다.<br>잠시 후 다시 시도해 주세요.</p></div>';
-    } else {
-      toast('최신 데이터를 불러오지 못해 저장된 내용을 표시합니다');
     }
+    return false;
   }
+}
+
+/* 우측 상단 새로고침 */
+async function refreshData() {
+  const btn = $('#refreshBtn');
+  if (btn && btn.classList.contains('spinning')) return;
+  if (btn) btn.classList.add('spinning');
+  const ok = await loadItems({ useCache: false });
+  if (btn) btn.classList.remove('spinning');
+  toast(ok ? '새로고침 완료' : '불러오지 못했어요 · 잠시 후 다시 시도해 주세요');
 }
 
 async function api(body) {
   if (!API_URL) { toast('데모 모드입니다 (저장되지 않음)'); return { ok:true, id:String(Date.now()) }; }
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(body)
-  });
-  return res.json();
+  toast('저장중입니다');
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    toast(data && data.ok ? '저장되었습니다' : '저장에 실패했습니다. 다시 시도해 주세요');
+    return data;
+  } catch (e) {
+    toast('저장에 실패했습니다. 다시 시도해 주세요');
+    return { ok: false };
+  }
 }
 
 /* ── 결재 결과 판정 ── */
@@ -751,9 +781,7 @@ $('#saveItemBtn').addEventListener('click', async () => {
     Object.assign(it, { name, price, photo, reason });
     closeSheets();
     refreshViews();
-    toast('저장 중…');
-    const r = await api({ action:'update', id, name, price, photo, reason });
-    toast(r.ok ? '수정했습니다' : '저장에 실패했습니다. 다시 시도해 주세요');
+    await api({ action:'update', id, name, price, photo, reason });
     return;
   }
 
@@ -766,7 +794,6 @@ $('#saveItemBtn').addEventListener('click', async () => {
     a1:'', a1c:'', a2:'', a2c:''
   };
   closeSheets();
-  toast('저장 중…');
   const r = await api({ action:'add', ...item });
   if (r.ok) {
     item.id = r.id;
@@ -774,8 +801,7 @@ $('#saveItemBtn').addEventListener('click', async () => {
     currentTab = status;
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === status));
     render();
-    toast(status === '결재' ? '결재를 올렸습니다' : '위시에 추가했습니다');
-  } else toast('저장에 실패했습니다. 다시 시도해 주세요');
+  }
 });
 
 /* ── 상세 ── */
@@ -936,9 +962,8 @@ async function setStatus(status, id = openItemId) {
   it.status = status;
   // 재상신(결재로 다시 올림) 시에도 기존 결재 의견은 유지 — 결재자가 '다시 결재'로만 수정
   refreshViews();
-  toast({'삼':'구매완료로 이동했습니다','안삼':'안삼으로 이동했습니다','위시':'위시로 이동했습니다','결재':'결재를 올렸습니다'}[status]);
   const r = await api({ action:'status', id: it.id, status });
-  if (!r.ok) { it.status = prev; refreshViews(); toast('저장에 실패했습니다. 다시 시도해 주세요'); }
+  if (!r.ok) { it.status = prev; refreshViews(); }
 }
 function requestApproval() { setStatus('결재'); }
 
@@ -989,9 +1014,7 @@ $('#voteSaveBtn').addEventListener('click', async () => {
   if (!voteOrder[it.id]) voteOrder[it.id] = [];
   if (!voteOrder[it.id].includes(n)) voteOrder[it.id].push(n);
   closeVote(); refreshViews();
-  toast(isEdit ? '결재 의견을 수정했습니다' : '결재 의견을 저장했습니다');
   const r = await api({ action:'approve', id: it.id, approver: n, result, comment, at });
-  if (!r.ok) toast('저장에 실패했습니다. 다시 시도해 주세요');
 });
 async function resetVote(id, n) {
   const it = items.find(i => String(i.id) === String(id));
@@ -999,8 +1022,7 @@ async function resetVote(id, n) {
   it['a'+n] = ''; it['a'+n+'c'] = ''; it['a'+n+'t'] = '';
   if (voteOrder[it.id]) voteOrder[it.id] = voteOrder[it.id].filter(x => x !== n);
   refreshViews();
-  const r = await api({ action:'approve', id: it.id, approver: n, result:'', comment:'' });
-  if (!r.ok) toast('저장에 실패했습니다. 다시 시도해 주세요');
+  await api({ action:'approve', id: it.id, approver: n, result:'', comment:'' });
 }
 
 /* ── 삭제 ── */
@@ -1010,9 +1032,8 @@ async function deleteItem(id = openItemId) {
   if (idx < 0) return;
   const [removed] = items.splice(idx, 1);
   closeSheets(); render();
-  toast('삭제했습니다');
   const r = await api({ action:'delete', id: removed.id });
-  if (!r.ok) { items.splice(idx, 0, removed); render(); toast('삭제에 실패했습니다. 다시 시도해 주세요'); }
+  if (!r.ok) { items.splice(idx, 0, removed); render(); }
 }
 
 /* ── 토스트 ── */
@@ -1025,6 +1046,7 @@ function toast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
 }
 
+$('#refreshBtn').addEventListener('click', refreshData);
 loadItems();
 </script>
 </body>
