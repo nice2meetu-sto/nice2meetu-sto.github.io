@@ -271,6 +271,7 @@ nav{
 }
 .result-bar.buy{background:rgba(52,199,89,.12);color:#1E9E4A}
 .result-bar.no{background:rgba(255,59,48,.10);color:var(--red)}
+.result-bar.wish{background:rgba(10,132,255,.10);color:var(--blue-deep)}
 .chat{display:flex;flex-direction:column;gap:14px}
 .msg{display:flex;flex-direction:column;max-width:84%}
 .msg.left{align-self:flex-start;align-items:flex-start}
@@ -558,7 +559,8 @@ function approvalSummary(it) {
 
 /* ── 마지막으로 처리(삼/안삼)된 결재 아이템 찾기 ── */
 function lastProcessedItem() {
-  const done = items.filter(i => (i.status === '삼' || i.status === '안삼') && (i.a1 || i.a2));
+  // 삼·안삼뿐 아니라, 결재 후 위시로 되돌린 아이템(결재 이력 있음)도 포함
+  const done = items.filter(i => (i.status === '삼' || i.status === '안삼' || i.status === '위시') && (i.a1 || i.a2));
   if (!done.length) return null;
   const key = i => Math.max(Number(i.a1t) || 0, Number(i.a2t) || 0) || Number(i.id) || 0;
   return done.sort((a, b) => key(b) - key(a))[0];
@@ -581,8 +583,12 @@ function renderResultSummary(it) {
       </div>`;
   }).join('');
 
-  const isBuy = it.status === '삼';
-  const resultLabel = isBuy ? '구매완료' : '안 사기로 함';
+  const RESULTS = {
+    '삼':   { label: '구매완료',      cls: 'buy'  },
+    '안삼': { label: '안 사기로 함',   cls: 'no'   },
+    '위시': { label: '위시로 되돌림',  cls: 'wish' }
+  };
+  const rb = RESULTS[it.status] || { label: it.status, cls: 'wish' };
 
   return `
   <div class="approval-convo">
@@ -604,7 +610,7 @@ function renderResultSummary(it) {
         <div class="section-label">결재 기록</div>
         ${records}
       </div>
-      <div class="result-bar ${isBuy ? 'buy' : 'no'}">처리 결과 · ${resultLabel}</div>
+      <div class="result-bar ${rb.cls}">처리 결과 · ${rb.label}</div>
     </div>
   </div>`;
 }
